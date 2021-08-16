@@ -2,6 +2,13 @@
 
 A derivable macro for declaring a builder pattern.
 
+## Installation
+
+```toml
+[dependencies]
+builder-pattern = "0.1"
+```
+
 ## Examples
 
 ```rust
