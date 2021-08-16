@@ -151,9 +151,7 @@ impl StructureInput {
             .iter()
             .chain(self.optional_fields.iter());
         iters.map(|f| {
-            let (ident, ty) = match f {
-                f => (&f.ident, &f.ty),
-            };
+            let (ident, ty) = (&f.ident, &f.ty);
             TokenStream::from(quote! {
                 #ident: Option<#ty>
             })
@@ -172,9 +170,7 @@ impl StructureInput {
                 })
             })
             .chain(self.optional_fields.iter().map(|f| {
-                let (ident, expr) = match f {
-                    f => (&f.ident, &f.expr),
-                };
+                let (ident, expr) = (&f.ident, &f.expr);
                 TokenStream::from(quote_spanned! { expr.span() =>
                     #ident: Some(#expr)
                 })
@@ -215,9 +211,7 @@ impl StructureInput {
             .iter()
             .chain(self.optional_fields.iter())
             .map(move |f| {
-                let (ident, ty) = match f {
-                    f => (&f.ident, &f.ty),
-                };
+                let (ident, ty) = (&f.ident, &f.ty);
                 let mut other_generics = all_generics.clone();
                 other_generics.remove(index);
                 let mut before_generics = all_generics.clone();
