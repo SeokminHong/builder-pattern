@@ -7,7 +7,6 @@ use syn::parse_macro_input;
 
 #[macro_use]
 extern crate quote;
-#[macro_use]
 extern crate syn;
 
 extern crate proc_macro2;

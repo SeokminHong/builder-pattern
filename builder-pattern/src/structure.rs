@@ -83,6 +83,8 @@ impl ToTokens for StructureInput {
 
         let struct_init_args = self.struct_init_args();
 
+        let builder_functions = self.builder_functions(&builder_name);
+
         tokens.extend(quote! {
             struct #builder_name <#(#all_generics),*> {
                 _phantom: ::std::marker::PhantomData<(#(#all_generics),*)>,
@@ -103,6 +105,7 @@ impl ToTokens for StructureInput {
                     }
                 }
             }
+            #(#builder_functions)*
         });
     }
 }
@@ -184,6 +187,50 @@ impl StructureInput {
                 let ident = &f.ident;
                 TokenStream::from(quote! {
                     #ident: self.#ident.unwrap()
+                })
+            })
+    }
+
+    fn builder_functions<'a>(
+        &'a self,
+        builder_name: &'a Ident,
+    ) -> impl 'a + Iterator<Item = TokenStream> {
+        let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
+        let all_builder_fields = self
+            .required_fields
+            .iter()
+            .chain(self.optional_fields.iter())
+            .map(|f| {
+                let ident = &f.ident;
+                TokenStream::from(quote! { #ident: self.#ident })
+            })
+            .collect::<Vec<TokenStream>>();
+        let mut index = 0;
+        self.required_fields
+            .iter()
+            .chain(self.optional_fields.iter())
+            .map(move |f| {
+                let (ident, ty) = match f {
+                    f => (&f.ident, &f.ty),
+                };
+                let mut other_generics = all_generics.clone();
+                other_generics.remove(index);
+                let mut before_generics = all_generics.clone();
+                before_generics[index] = TokenStream::from_str("()").unwrap();
+                let mut after_generics = all_generics.clone();
+                after_generics[index] = TokenStream::from(quote! {#ty});
+                let mut builder_fields = all_builder_fields.clone();
+                builder_fields[index] = TokenStream::from(quote! {#ident: Some(value)});
+                index = index + 1;
+                TokenStream::from(quote! {
+                    impl <#(#other_generics),*> #builder_name <#(#before_generics),*> {
+                        fn #ident(mut self, value: #ty) -> #builder_name <#(#after_generics),*> {
+                            #builder_name {
+                                _phantom: ::std::marker::PhantomData,
+                                #(#builder_fields),*
+                            }
+                        }
+                    }
                 })
             })
     }
