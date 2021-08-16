@@ -72,10 +72,16 @@ impl ToTokens for StructureInput {
         let ident = &self.ident;
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
+
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
-        let builder_fields = self.builder_fields();
         let empty_generics = self.empty_generics();
+        let optional_generics = self.optional_generics();
+        let satisfied_generics = self.satified_generics();
+
+        let builder_fields = self.builder_fields();
         let builder_init_args = self.builder_init_args();
+
+        let struct_init_args = self.struct_init_args();
 
         tokens.extend(quote! {
             struct #builder_name <#(#all_generics),*> {
@@ -87,6 +93,13 @@ impl ToTokens for StructureInput {
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
                         #(#builder_init_args),*
+                    }
+                }
+            }
+            impl <#(#optional_generics),*> #builder_name <#(#satisfied_generics),*> {
+                fn build(self) -> #ident {
+                    #ident {
+                        #(#struct_init_args),*
                     }
                 }
             }
@@ -109,6 +122,23 @@ impl StructureInput {
             .map(|_| TokenStream::from_str("()").unwrap())
     }
 
+    fn optional_generics(&self) -> impl Iterator<Item = TokenStream> {
+        let offset = self.required_fields.len() + 1;
+        (0..self.optional_fields.len())
+            .into_iter()
+            .map(move |i| TokenStream::from_str(&format!("T{}", i + offset)).unwrap())
+    }
+
+    fn satified_generics<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+        self.required_fields
+            .iter()
+            .map(|f| {
+                let ty = &f.ty;
+                TokenStream::from(quote! {#ty})
+            })
+            .chain(self.optional_generics())
+    }
+
     // An iterator for fields of the builder.
     fn builder_fields<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         let iters = self
@@ -116,11 +146,11 @@ impl StructureInput {
             .iter()
             .chain(self.optional_fields.iter());
         iters.map(|f| {
-            let (vis, ident, ty) = match f {
-                f => (&f.vis, &f.ident, &f.ty),
+            let (ident, ty) = match f {
+                f => (&f.ident, &f.ty),
             };
             TokenStream::from(quote! {
-                #vis #ident: Option<#ty>
+                #ident: Option<#ty>
             })
         })
     }
@@ -144,5 +174,17 @@ impl StructureInput {
                     #ident: Some(#expr)
                 })
             }))
+    }
+
+    fn struct_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+        self.required_fields
+            .iter()
+            .chain(self.optional_fields.iter())
+            .map(|f| {
+                let ident = &f.ident;
+                TokenStream::from(quote! {
+                    #ident: self.#ident.unwrap()
+                })
+            })
     }
 }
