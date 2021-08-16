@@ -2,6 +2,8 @@
 name = "builder-pattern"
 version = "0.1.0"
 edition = "2018"
+authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
