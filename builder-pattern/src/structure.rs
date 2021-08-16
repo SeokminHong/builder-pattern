@@ -95,21 +95,21 @@ impl ToTokens for StructureInput {
 }
 
 impl StructureInput {
-    // An iterator for generics like [T1, T2, ...]
+    // An iterator for generics like [T1, T2, ...].
     fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("T{}", i + 1)).unwrap())
     }
 
-    // An iterator to describe initial state of builder
+    // An iterator to describe initial state of builder.
     fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|_| TokenStream::from_str("()").unwrap())
     }
 
-    // An iterator for fields of the builder
+    // An iterator for fields of the builder.
     fn builder_fields<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         let iters = self
             .required_fields
@@ -125,6 +125,8 @@ impl StructureInput {
         })
     }
 
+    // An iterator for initialize arguments of the builder.
+    // Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
     fn builder_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
