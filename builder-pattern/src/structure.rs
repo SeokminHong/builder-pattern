@@ -111,20 +111,21 @@ impl ToTokens for StructureInput {
 }
 
 impl StructureInput {
-    // An iterator for generics like [T1, T2, ...].
+    /// An iterator for generics like [T1, T2, ...].
     fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("T{}", i + 1)).unwrap())
     }
 
-    // An iterator to describe initial state of builder.
+    /// An iterator to describe initial state of builder.
     fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|_| TokenStream::from_str("()").unwrap())
     }
 
+    /// An iterator for optional fields.
     fn optional_generics(&self) -> impl Iterator<Item = TokenStream> {
         let offset = self.required_fields.len() + 1;
         (0..self.optional_fields.len())
@@ -132,6 +133,7 @@ impl StructureInput {
             .map(move |i| TokenStream::from_str(&format!("T{}", i + offset)).unwrap())
     }
 
+    /// An iterator to describe when the builder has enough types to build the struct.
     fn satified_generics<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
@@ -142,7 +144,7 @@ impl StructureInput {
             .chain(self.optional_generics())
     }
 
-    // An iterator for fields of the builder.
+    /// An iterator for fields of the builder.
     fn builder_fields<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         let iters = self
             .required_fields
@@ -158,8 +160,8 @@ impl StructureInput {
         })
     }
 
-    // An iterator for initialize arguments of the builder.
-    // Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
+    /// An iterator for initialize arguments of the builder.
+    /// Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
     fn builder_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
@@ -179,6 +181,7 @@ impl StructureInput {
             }))
     }
 
+    /// An iterator to express initialize statements.
     fn struct_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
@@ -191,6 +194,7 @@ impl StructureInput {
             })
     }
 
+    /// An iterator to describe builder functions.
     fn builder_functions<'a>(
         &'a self,
         builder_name: &'a Ident,
@@ -205,6 +209,7 @@ impl StructureInput {
                 TokenStream::from(quote! { #ident: self.#ident })
             })
             .collect::<Vec<TokenStream>>();
+
         let mut index = 0;
         self.required_fields
             .iter()
