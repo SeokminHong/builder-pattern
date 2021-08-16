@@ -29,7 +29,7 @@ extern crate proc_macro2;
 /// let p1 = Person::new().name(String::from("Joe")).age(27).build();
 /// // Orders does not matter.
 /// let p2 = Person::new().age(32).name(String::from("Jack")).gender(Gender::Male).build();
-/// // Compilation error.
+/// // `name` field required - Compilation error.
 /// let p3 = Person::new().age(15).build();
 /// ```
 ///

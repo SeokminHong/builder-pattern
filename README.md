@@ -7,29 +7,22 @@ A derivable macro for declaring a builder pattern.
 ```rust
 use builder_pattern::*;
 
-// Derive `Builder` macro for a structure.
 #[derive(Builder)]
-pub struct Test {
-    pub a: i32,
-    #[default(String::from(""))]
-    pub b: String,
-    #[default(None)]
-    pub c: Option<i32>,
-    pub d: bool,
+struct Person {
+    name: String,
+    age: i32,
+    #[default(Gender::Nonbinary)]
+    gender: Gender,
 }
 
-pub fn test() {
-    let _t1 = Test::new().a(3).d(false).build();
-    let _t2 = Test::new()
-        .a(3)
-        .d(true)
-        .c(Some(3))
-        .build();
-    // Compile error
-    let _t3 = Test::new().a(5).build();
-}
+let p1 = Person::new().name(String::from("Joe")).age(27).build();
+// Orders does not matter.
+let p2 = Person::new().age(32).name(String::from("Jack")).gender(Gender::Male).build();
+// `name` field required - Compilation error.
+let p3 = Person::new().age(15).build();
 ```
 
-It considers all fields without `default` attribute as required. If the attribute is provided, the expression in the parantheses is evaluated as a default value.
+It considers all fields without `default` attribute as required.
+If the attribute is provided, the expression in the parantheses is evaluated as a default value.
 
 When the insuficient number of arguments is provided, the compilation will fail.
