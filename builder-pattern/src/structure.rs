@@ -1,5 +1,6 @@
-use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use std::str::FromStr;
+
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
@@ -29,17 +30,17 @@ impl Parse for StructureInput {
         let data_struct = if let Data::Struct(d) = input.data {
             d
         } else {
-            unimplemented!();
+            unimplemented!("Only structures are supported!");
         };
         let fields = if let Fields::Named(f) = data_struct.fields {
             f
         } else {
-            unimplemented!();
+            unimplemented!("Only structures are supported!");
         };
         let mut optional_fields: Vec<Field> = vec![];
         let mut required_fields: Vec<Field> = vec![];
         for f in fields.named.into_iter() {
-            println!("{}", f.ident.to_token_stream().to_string());
+            // Having "default" attribute
             match f.attrs.iter().find(|attr| attr.path.is_ident("default")) {
                 Some(attr) => optional_fields.push(Field {
                     ident: f.ident.unwrap(),
@@ -64,10 +65,27 @@ impl Parse for StructureInput {
 }
 
 impl ToTokens for StructureInput {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
+        let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         tokens.extend(quote! {
-            struct #builder_name {}
+            struct #builder_name <#(#all_generics),*> {
+                _phantom: ::std::marker::PhantomData<(#(#all_generics),*)>,
+            }
         });
+        println!(
+            "{} {}",
+            self.required_fields.len(),
+            self.optional_fields.len()
+        );
+    }
+}
+
+// Generate an iterator for generics like [T1, T2, ...]
+impl StructureInput {
+    fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
+        (0..(self.required_fields.len() + self.optional_fields.len()))
+            .into_iter()
+            .map(|i| TokenStream::from_str(&format!("T{}", i + 1)).unwrap())
     }
 }
