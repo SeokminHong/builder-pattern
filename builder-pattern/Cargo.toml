@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"
+description = "A derivable macro for declaring a builder pattern."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
