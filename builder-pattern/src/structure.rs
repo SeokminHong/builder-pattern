@@ -238,13 +238,13 @@ impl StructureInput {
                 let mut after_generics = all_generics.clone();
                 after_generics[index] = TokenStream::from(quote! {#ty});
                 let mut builder_fields = all_builder_fields.clone();
-                builder_fields[index] = TokenStream::from(quote! {#ident: Some(value)});
+                builder_fields[index] = TokenStream::from(quote! {#ident: Some(value.into())});
                 index = index + 1;
                 TokenStream::from(quote! {
                     impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
                         #where_clause
                     {
-                        #vis fn #ident(mut self, value: #ty) -> #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*> {
+                        #vis fn #ident<InToType: Into<#ty>>(mut self, value: InToType) -> #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*> {
                             #builder_name {
                                 _phantom: ::std::marker::PhantomData,
                                 #(#builder_fields),*
