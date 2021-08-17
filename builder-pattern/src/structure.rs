@@ -2,9 +2,14 @@ use std::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
+use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{Data, DeriveInput, Expr, Fields, Generics, Type, Visibility};
+use syn::{
+    parse_macro_input, AttrStyle, Data, DeriveInput, Expr, Fields, GenericParam, Generics,
+    LifetimeDef, Token, Type, TypeParam, Visibility, WherePredicate,
+};
 
 #[derive(Clone)]
 pub struct Field {
@@ -70,11 +75,20 @@ impl Parse for StructureInput {
 impl ToTokens for StructureInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
+        let vis = &self.vis;
+        let ty_tokens = self.parse_type_tokens();
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        let lifetimes = self.generics.lifetimes().collect::<Vec<&LifetimeDef>>();
+
+        let ty_params = self.generics.type_params().collect::<Vec<&TypeParam>>();
+        let impl_token = self.generate_impl_token();
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
 
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let empty_generics = self.empty_generics();
+
+        println!();
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
 
@@ -86,36 +100,38 @@ impl ToTokens for StructureInput {
         let builder_functions = self.builder_functions(&builder_name);
 
         tokens.extend(quote! {
-            struct #builder_name <#(#all_generics),*> {
-                _phantom: ::std::marker::PhantomData<(#(#all_generics),*)>,
+            #vis struct #builder_name <#impl_token #(#all_generics),*> #where_clause {
+                _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
                 #(#builder_fields),*
             }
-            impl #ident {
-                fn new() -> #builder_name<#(#empty_generics),*> {
+            impl <#impl_token> #ident #ty_generics #where_clause {
+                #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
                         #(#builder_init_args),*
                     }
                 }
             }
-            impl <#(#optional_generics),*> #builder_name <#(#satisfied_generics),*> {
-                fn build(self) -> #ident {
+            impl <#impl_token #(#optional_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#satisfied_generics),*>
+                #where_clause
+            {
+                #vis fn build(self) -> #ident #ty_generics {
                     #ident {
                         #(#struct_init_args),*
                     }
                 }
             }
-            #(#builder_functions)*
+            //#(#builder_functions)*
         });
     }
 }
 
 impl StructureInput {
-    /// An iterator for generics like [T1, T2, ...].
+    /// An iterator for generics like [U1, U2, ...].
     fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
-            .map(|i| TokenStream::from_str(&format!("T{}", i + 1)).unwrap())
+            .map(|i| TokenStream::from_str(&format!("U{}", i + 1)).unwrap())
     }
 
     /// An iterator to describe initial state of builder.
@@ -130,7 +146,7 @@ impl StructureInput {
         let offset = self.required_fields.len() + 1;
         (0..self.optional_fields.len())
             .into_iter()
-            .map(move |i| TokenStream::from_str(&format!("T{}", i + offset)).unwrap())
+            .map(move |i| TokenStream::from_str(&format!("U{}", i + offset)).unwrap())
     }
 
     /// An iterator to describe when the builder has enough types to build the struct.
@@ -195,6 +211,10 @@ impl StructureInput {
         &'a self,
         builder_name: &'a Ident,
     ) -> impl 'a + Iterator<Item = TokenStream> {
+        let vis = &self.vis;
+        let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
+        let ty_params = self.generics.type_params().collect::<Vec<&TypeParam>>();
+        let impl_token = self.generate_impl_token();
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let all_builder_fields = self
             .required_fields
@@ -222,8 +242,8 @@ impl StructureInput {
                 builder_fields[index] = TokenStream::from(quote! {#ident: Some(value)});
                 index = index + 1;
                 TokenStream::from(quote! {
-                    impl <#(#other_generics),*> #builder_name <#(#before_generics),*> {
-                        fn #ident(mut self, value: #ty) -> #builder_name <#(#after_generics),*> {
+                    impl <#(#other_generics,)* impl_token> #builder_name <#(#ty_params,)* #(#before_generics),*> {
+                        #vis fn #ident(mut self, value: #ty) -> #builder_name <#(#ty_params,)* #(#after_generics),*> {
                             #builder_name {
                                 _phantom: ::std::marker::PhantomData,
                                 #(#builder_fields),*
@@ -232,5 +252,105 @@ impl StructureInput {
                     }
                 })
             })
+    }
+
+    fn parse_type_tokens(&self) -> TokenStream {
+        let generics = &self.generics;
+        let mut tokens = TokenStream::new();
+
+        if generics.params.is_empty() {
+            return tokens;
+        }
+
+        let mut trailing_or_empty = true;
+        for param in generics.params.pairs() {
+            if let GenericParam::Lifetime(def) = *param.value() {
+                trailing_or_empty = param.punct().is_some();
+            }
+        }
+        for param in generics.params.pairs() {
+            if let GenericParam::Lifetime(_) = **param.value() {
+                continue;
+            }
+            if !trailing_or_empty {
+                <Token![,]>::default().to_tokens(&mut tokens);
+                trailing_or_empty = true;
+            }
+            match *param.value() {
+                GenericParam::Lifetime(_) => unreachable!(),
+                GenericParam::Type(param) => {
+                    // Leave off the type parameter defaults
+                    param.ident.to_tokens(&mut tokens);
+                }
+                GenericParam::Const(param) => {
+                    // Leave off the const parameter defaults
+                    param.ident.to_tokens(&mut tokens);
+                }
+            }
+            param.punct().to_tokens(&mut tokens);
+        }
+        <Token![,]>::default().to_tokens(&mut tokens);
+        tokens
+    }
+
+    fn generate_impl_token(&self) -> TokenStream {
+        let mut tokens = TokenStream::new();
+        let generics = &self.generics;
+
+        // Print lifetimes before types and consts, regardless of their
+        // order in self.params.
+        //
+        // TODO: ordering rules for const parameters vs type parameters have
+        // not been settled yet. https://github.com/rust-lang/rust/issues/44580
+        let mut trailing_or_empty = true;
+        for param in generics.params.pairs() {
+            if let GenericParam::Lifetime(_) = **param.value() {
+                param.to_tokens(&mut tokens);
+                trailing_or_empty = param.punct().is_some();
+            }
+        }
+        for param in generics.params.pairs() {
+            if let GenericParam::Lifetime(_) = **param.value() {
+                continue;
+            }
+            if !trailing_or_empty {
+                <Token![,]>::default().to_tokens(&mut tokens);
+                trailing_or_empty = true;
+            }
+            match *param.value() {
+                GenericParam::Lifetime(_) => unreachable!(),
+                GenericParam::Type(param) => {
+                    // Leave off the type parameter defaults
+                    tokens.append_all(param.attrs.iter().filter(|attr| match attr.style {
+                        AttrStyle::Outer => true,
+                        AttrStyle::Inner(_) => false,
+                    }));
+                    param.ident.to_tokens(&mut tokens);
+                    if !param.bounds.is_empty() {
+                        if let Some(t) = &param.colon_token {
+                            t.to_tokens(&mut tokens)
+                        }
+
+                        param.bounds.to_tokens(&mut tokens);
+                    }
+                }
+                GenericParam::Const(param) => {
+                    // Leave off the const parameter defaults
+                    tokens.append_all(param.attrs.iter().filter(|attr| match attr.style {
+                        AttrStyle::Outer => true,
+                        AttrStyle::Inner(_) => false,
+                    }));
+                    param.const_token.to_tokens(&mut tokens);
+                    param.ident.to_tokens(&mut tokens);
+                    param.colon_token.to_tokens(&mut tokens);
+                    param.ty.to_tokens(&mut tokens);
+                }
+            }
+            param.punct().to_tokens(&mut tokens);
+        }
+        if !tokens.is_empty() {
+            <Token![,]>::default().to_tokens(&mut tokens);
+        }
+        tokens
     }
 }

@@ -1,14 +1,6 @@
-use builder_pattern::*;
+mod test;
 
-#[derive(Builder)]
-pub struct Test {
-    pub a: i32,
-    #[default(String::from(""))]
-    pub b: String,
-    #[default(None)]
-    pub c: Option<i32>,
-    pub d: Option<String>,
-}
+use test::*;
 
 pub fn test() {
     let _t1 = Test::new().a(3).d(Some("foo".to_string())).build();
