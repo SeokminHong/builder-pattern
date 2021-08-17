@@ -6,7 +6,7 @@ A derivable macro for declaring a builder pattern.
 
 ```toml
 [dependencies]
-builder-pattern = "0.1"
+builder-pattern = "0.2"
 ```
 
 ## Examples
