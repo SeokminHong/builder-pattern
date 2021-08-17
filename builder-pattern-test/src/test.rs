@@ -1,7 +1,8 @@
 use builder_pattern::*;
 
+#[allow(dead_code)]
 #[derive(Debug)]
-enum MyEnum {
+pub enum MyEnum {
     A,
     B(i32),
 }
@@ -23,8 +24,29 @@ pub struct PublicTest {
     pub a: i32,
     #[default(String::from(""))]
     pub b: String,
-    #[default(None)]
+    #[default(Some(3))]
     pub c: Option<i32>,
     #[allow(dead_code)]
     d: MyEnum,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn private_test() {
+        let a = PrivateTest::<i32, String>::new()
+            .a(5)
+            .b(std::borrow::Cow::Owned(String::from("Hello")))
+            .build();
+
+        let b = PrivateTest::<i32, String>::new()
+            .b(std::borrow::Cow::Owned(String::from("foo")))
+            .a(3)
+            .c(String::from("hi"))
+            .build();
+
+        print!("{:?} {:?}", a, b);
+    }
 }
