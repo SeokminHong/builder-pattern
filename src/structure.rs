@@ -151,59 +151,59 @@ impl StructureInput {
     }
 
     /// An iterator to describe when the builder has enough types to build the struct.
-    fn satified_generics<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+    fn satified_generics(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
             .map(|f| {
                 let ty = &f.ty;
-                TokenStream::from(quote! {#ty})
+                quote! {#ty}
             })
             .chain(self.optional_generics())
     }
 
     /// An iterator for fields of the builder.
-    fn builder_fields<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+    fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         let iters = self
             .required_fields
             .iter()
             .chain(self.optional_fields.iter());
         iters.map(|f| {
             let (ident, ty) = (&f.ident, &f.ty);
-            TokenStream::from(quote! {
+            quote! {
                 #ident: Option<#ty>
-            })
+            }
         })
     }
 
     /// An iterator for initialize arguments of the builder.
     /// Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
-    fn builder_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+    fn builder_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
             .map(|f| {
                 let ident = &f.ident;
-                TokenStream::from(quote! {
+                quote! {
                     #ident: None
-                })
+                }
             })
             .chain(self.optional_fields.iter().map(|f| {
                 let (ident, expr) = (&f.ident, &f.expr);
-                TokenStream::from(quote_spanned! { expr.span() =>
+                quote_spanned! { expr.span() =>
                     #ident: Some(#expr)
-                })
+                }
             }))
     }
 
     /// An iterator to express initialize statements.
-    fn struct_init_args<'a>(&'a self) -> impl 'a + Iterator<Item = TokenStream> {
+    fn struct_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         self.required_fields
             .iter()
             .chain(self.optional_fields.iter())
             .map(|f| {
                 let ident = &f.ident;
-                TokenStream::from(quote! {
+                quote! {
                     #ident: self.#ident.unwrap()
-                })
+                }
             })
     }
 
@@ -211,7 +211,7 @@ impl StructureInput {
     fn builder_functions<'a>(
         &'a self,
         builder_name: &'a Ident,
-        lifetimes: &'a Vec<TokenStream>,
+        lifetimes: &'a [TokenStream],
         ty_tokens: &'a TokenStream,
     ) -> impl 'a + Iterator<Item = TokenStream> {
         let vis = &self.vis;
@@ -224,7 +224,7 @@ impl StructureInput {
             .chain(self.optional_fields.iter())
             .map(|f| {
                 let ident = &f.ident;
-                TokenStream::from(quote! { #ident: self.#ident })
+                quote! { #ident: self.#ident }
             })
             .collect::<Vec<TokenStream>>();
 
@@ -239,11 +239,11 @@ impl StructureInput {
                 let mut before_generics = all_generics.clone();
                 before_generics[index] = TokenStream::from_str("()").unwrap();
                 let mut after_generics = all_generics.clone();
-                after_generics[index] = TokenStream::from(quote! {#ty});
+                after_generics[index] = quote! {#ty};
                 let mut builder_fields = all_builder_fields.clone();
-                builder_fields[index] = TokenStream::from(quote! {#ident: Some(value.into())});
-                index = index + 1;
-                TokenStream::from(quote! {
+                builder_fields[index] = quote! {#ident: Some(value.into())};
+                index += 1;
+                quote! {
                     impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
                         #where_clause
                     {
@@ -254,7 +254,7 @@ impl StructureInput {
                             }
                         }
                     }
-                })
+                }
             })
     }
 
