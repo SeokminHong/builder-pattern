@@ -3,7 +3,7 @@ use builder_pattern::Builder;
 #[derive(Builder, Debug)]
 struct Test {
     a: i32,
-    #[setter(into)]
+    #[into]
     b: String,
     c: String,
 }

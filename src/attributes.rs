@@ -1,6 +1,4 @@
-use syn::Attribute;
-use syn::Path;
-use syn::{Expr, Meta, NestedMeta};
+use syn::{Attribute, Expr};
 
 pub struct FieldAttributes {
     pub default: Option<Expr>,
@@ -27,8 +25,8 @@ impl From<Vec<Attribute>> for FieldAttributes {
                     unimplemented!("Duplicated `default` attributes.")
                 }
                 parse_default(attr, &mut attributes)
-            } else if attr.path.is_ident("setter") {
-                parse_setter(attr, &mut attributes)
+            } else if attr.path.is_ident("into") {
+                attributes.use_into = true
             } else if attr.path.is_ident("validator") {
                 parse_validator(attr, &mut attributes)
             }
@@ -39,26 +37,6 @@ impl From<Vec<Attribute>> for FieldAttributes {
 
 fn parse_default(attr: &Attribute, attributes: &mut FieldAttributes) {
     attributes.default = Some(attr.parse_args().unwrap());
-}
-
-fn parse_setter(attr: &Attribute, attributes: &mut FieldAttributes) {
-    let mut paths: Vec<Path> = vec![];
-    match attr.parse_meta().unwrap() {
-        Meta::Path(p) => paths.push(p),
-        Meta::List(l) => {
-            l.nested.into_iter().for_each(|m| {
-                if let NestedMeta::Meta(Meta::Path(p)) = m {
-                    paths.push(p)
-                }
-            });
-        }
-        Meta::NameValue(_) => {}
-    }
-    for p in paths.into_iter() {
-        if p.is_ident("into") {
-            attributes.use_into = true
-        }
-    }
 }
 
 fn parse_validator(attr: &Attribute, attributes: &mut FieldAttributes) {
