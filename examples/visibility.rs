@@ -25,6 +25,7 @@ mod vis_mod {
     pub struct PublicTest {
         pub a: i32,
         #[default(String::from(""))]
+        #[setter(into)]
         pub b: String,
         #[default(Some(3))]
         pub c: Option<i32>,

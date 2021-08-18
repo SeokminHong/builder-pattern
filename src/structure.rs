@@ -1,3 +1,4 @@
+use super::attributes::FieldAttributes;
 use std::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -5,16 +6,13 @@ use quote::ToTokens;
 use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{
-    AttrStyle, Data, DeriveInput, Expr, Fields, GenericParam, Generics, Token, Type, Visibility,
-};
+use syn::{AttrStyle, Data, DeriveInput, Fields, GenericParam, Generics, Token, Type, Visibility};
 
-#[derive(Clone)]
 pub struct Field {
     pub vis: Visibility,
     pub ident: Ident,
     pub ty: Type,
-    pub expr: Option<Expr>,
+    pub attrs: FieldAttributes,
 }
 
 pub struct StructureInput {
@@ -44,21 +42,18 @@ impl Parse for StructureInput {
         let mut optional_fields: Vec<Field> = vec![];
         let mut required_fields: Vec<Field> = vec![];
         for f in fields.named.into_iter() {
-            // Having "default" attribute
-            match f.attrs.iter().find(|attr| attr.path.is_ident("default")) {
-                Some(attr) => optional_fields.push(Field {
-                    vis: f.vis,
-                    ident: f.ident.unwrap(),
-                    ty: f.ty,
-                    expr: Some(attr.parse_args().unwrap()),
-                }),
-                None => required_fields.push(Field {
-                    vis: f.vis,
-                    ident: f.ident.unwrap(),
-                    ty: f.ty,
-                    expr: None,
-                }),
+            let attrs: FieldAttributes = f.attrs.into();
+            let fields = if attrs.default.is_some() {
+                &mut optional_fields
+            } else {
+                &mut required_fields
             };
+            fields.push(Field {
+                vis: f.vis,
+                ident: f.ident.unwrap(),
+                ty: f.ty,
+                attrs,
+            });
         }
         Ok(StructureInput {
             vis,
@@ -188,7 +183,7 @@ impl StructureInput {
                 }
             })
             .chain(self.optional_fields.iter().map(|f| {
-                let (ident, expr) = (&f.ident, &f.expr);
+                let (ident, expr) = (&f.ident, &f.attrs.default.as_ref());
                 quote_spanned! { expr.span() =>
                     #ident: Some(#expr)
                 }
@@ -244,11 +239,13 @@ impl StructureInput {
                 let mut builder_fields = all_builder_fields.clone();
                 builder_fields[index] = quote! {#ident: Some(value.into())};
                 index += 1;
+                
+                let (arg_type_gen, arg_type) = if f.attrs.use_into {(Some(quote!{<IntoType: Into<#ty>>}), TokenStream::from_str("IntoType").unwrap())} else {(None, quote! {#ty})};
                 quote! {
                     impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
                         #where_clause
                     {
-                        #vis fn #ident<InToType: Into<#ty>>(mut self, value: InToType) -> #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*> {
+                        #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*> {
                             #builder_name {
                                 _phantom: ::std::marker::PhantomData,
                                 #(#builder_fields),*
