@@ -1,4 +1,4 @@
-use builder_pattern::*;
+use builder_pattern::Builder;
 
 #[derive(Builder, Debug)]
 struct Test {
