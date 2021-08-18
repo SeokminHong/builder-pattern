@@ -1,12 +1,16 @@
 [package]
 name = "builder-pattern"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"
 description = "A derivable macro for declaring a builder pattern."
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+repository = "https://github.com/SeokminHong/builder-pattern"
+homepage = "https://github.com/SeokminHong/builder-pattern"
+documentation = "https://docs.rs/builder-pattern/0.2.0/builder_pattern"
+categories = ["development-tools", "rust-patterns"]
+keywords = ["builder", "pattern", "macro", "derive", "struct"]
+readme = "README.md"
 
 [dependencies]
 proc-macro2 = "1.0"
