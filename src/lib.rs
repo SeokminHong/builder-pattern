@@ -29,7 +29,7 @@ extern crate proc_macro2;
 ///
 /// #[derive(Builder)]
 /// struct Person {
-///     #[setter(into)]
+///     #[into]
 ///     name: String,
 ///     age: i32,
 ///     #[default(Gender::Nonbinary)]
@@ -45,7 +45,7 @@ extern crate proc_macro2;
 /// let p2 = Person::new()
 ///     .age(32)
 ///     // `&str` is implicitly converted into `String`
-///     // because of `setter(into)` attribute!
+///     // because of `into` attribute!
 ///     .name("Jack")
 ///     .gender(Gender::Male).build();
 ///
@@ -78,7 +78,7 @@ extern crate proc_macro2;
 ///
 /// A field having this attribute will be considered as optional and the `expr` will be evaluated as a default value of the field. /// `build` function can be called without providing this field.
 ///
-/// ### `#[setter(into)]`
+/// ### `#[into]`
 ///
 /// A setter function for a field having this attribute will accept an `Into` trait as a parameter. You can use this setter with implicit /// conversion.
 ///
@@ -87,7 +87,7 @@ extern crate proc_macro2;
 /// ```rust
 /// #[derive(Builder)]
 /// struct Test {
-///     #[setter(into)]
+///     #[into]
 ///     pub name: String,
 /// }
 ///
@@ -127,7 +127,7 @@ extern crate proc_macro2;
 /// ```rust
 /// #[derive(Builder)]
 /// struct Person {
-///     #[setter(into)]
+///     #[into]
 ///     #[validator(is_not_empty)]
 ///     name: String,
 ///     age: i32,
@@ -214,7 +214,7 @@ extern crate proc_macro2;
 ///     }
 /// }
 /// ```
-#[proc_macro_derive(Builder, attributes(default, setter, validator))]
+#[proc_macro_derive(Builder, attributes(default, into, validator))]
 pub fn derive_builder(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as StructureInput);
     TokenStream::from(input.into_token_stream())
