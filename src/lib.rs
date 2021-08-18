@@ -38,7 +38,7 @@ extern crate proc_macro2;
 /// If the attribute is provided, the expression in the parantheses is evaluated as a default value.
 ///
 /// When the insuficient number of arguments is provided, the compilation will fail.
-#[proc_macro_derive(Builder, attributes(default, setter))]
+#[proc_macro_derive(Builder, attributes(default, setter, validator))]
 pub fn derive_builder(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as StructureInput);
     TokenStream::from(input.into_token_stream())

@@ -240,16 +240,37 @@ impl StructureInput {
                 builder_fields[index] = quote! {#ident: Some(value.into())};
                 index += 1;
                 
-                let (arg_type_gen, arg_type) = if f.attrs.use_into {(Some(quote!{<IntoType: Into<#ty>>}), TokenStream::from_str("IntoType").unwrap())} else {(None, quote! {#ty})};
+                let (arg_type_gen, arg_type) = 
+                    if f.attrs.use_into {
+                        (Some(quote!{<IntoType: Into<#ty>>}), TokenStream::from_str("IntoType").unwrap())
+                    } else {
+                        (None, quote! {#ty})
+                    };
+                let ret_expr = quote! {
+                    #builder_name {
+                        _phantom: ::std::marker::PhantomData,
+                        #(#builder_fields),*
+                    }
+                };
+                let (ret_type, ret_expr) = match &f.attrs.validator {
+                    Some(v) => (quote! {
+                        ::std::result::Result< #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, ()>
+                    }, quote_spanned! { v.span() =>
+                        match #v (value) {
+                            ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr),
+                            ::std::result::Result::Err(_) => ::std::result::Result::Err(())
+                        }
+                    }),
+                    None => (quote! {
+                        #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>
+                    }, ret_expr)
+                };
                 quote! {
                     impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
                         #where_clause
                     {
-                        #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*> {
-                            #builder_name {
-                                _phantom: ::std::marker::PhantomData,
-                                #(#builder_fields),*
-                            }
+                        #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #ret_type {
+                            #ret_expr
                         }
                     }
                 }
