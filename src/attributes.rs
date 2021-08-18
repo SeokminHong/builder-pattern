@@ -5,6 +5,7 @@ use syn::{Expr, Meta, NestedMeta};
 pub struct FieldAttributes {
     pub default: Option<Expr>,
     pub use_into: bool,
+    pub validator: Option<Expr>,
 }
 
 impl Default for FieldAttributes {
@@ -12,6 +13,7 @@ impl Default for FieldAttributes {
         FieldAttributes {
             default: None,
             use_into: false,
+            validator: None,
         }
     }
 }
@@ -27,6 +29,8 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 parse_default(attr, &mut attributes)
             } else if attr.path.is_ident("setter") {
                 parse_setter(attr, &mut attributes)
+            } else if attr.path.is_ident("validator") {
+                parse_validator(attr, &mut attributes)
             }
         });
         attributes
@@ -55,4 +59,8 @@ fn parse_setter(attr: &Attribute, attributes: &mut FieldAttributes) {
             attributes.use_into = true
         }
     }
+}
+
+fn parse_validator(attr: &Attribute, attributes: &mut FieldAttributes) {
+    attributes.validator = Some(attr.parse_args().unwrap());
 }

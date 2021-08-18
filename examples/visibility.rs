@@ -1,5 +1,5 @@
 mod vis_mod {
-    use builder_pattern::*;
+    use builder_pattern::Builder;
 
     #[allow(dead_code)]
     #[derive(Debug)]
