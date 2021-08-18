@@ -133,7 +133,7 @@ impl StructureInput {
     fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
-            .map(|i| TokenStream::from_str(&format!("U{}", i + 1)).unwrap())
+            .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
     }
 
     /// An iterator to describe initial state of builder.
@@ -146,9 +146,9 @@ impl StructureInput {
     /// An iterator for optional fields.
     fn optional_generics(&self) -> impl Iterator<Item = TokenStream> {
         let offset = self.required_fields.len() + 1;
-        (0..self.optional_fields.len())
-            .into_iter()
-            .map(move |i| TokenStream::from_str(&format!("U{}", i + offset)).unwrap())
+        (0..self.optional_fields.len()).into_iter().map(move |i| {
+            TokenStream::from_str(&format!("TyBuilderPattern{}", i + offset)).unwrap()
+        })
     }
 
     /// An iterator to describe when the builder has enough types to build the struct.
