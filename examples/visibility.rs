@@ -10,7 +10,7 @@ mod vis_mod {
 
     #[allow(dead_code)]
     #[derive(Builder, Debug)]
-    struct PrivateTest<'a, T: Sized, U>
+    struct PrivateTest<'a, 'b: 'a, T: Sized, U>
     where
         U: Clone,
     {
@@ -18,6 +18,7 @@ mod vis_mod {
         pub b: std::borrow::Cow<'a, U>,
         #[default(String::from(""))]
         pub c: String,
+        pub d: &'b &'static i32,
     }
 
     #[derive(Builder, Debug)]
@@ -40,9 +41,11 @@ mod vis_mod {
             let a = PrivateTest::<i32, String>::new()
                 .a(5)
                 .b(std::borrow::Cow::Owned(String::from("Hello")))
+                .d(&&3)
                 .build();
 
             let b = PrivateTest::<i32, String>::new()
+                .d(&&4)
                 .b(std::borrow::Cow::Owned(String::from("foo")))
                 .a(3)
                 .c(String::from("hi"))

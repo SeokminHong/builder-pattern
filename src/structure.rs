@@ -6,8 +6,7 @@ use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{
-    AttrStyle, Data, DeriveInput, Expr, Fields, GenericParam, Generics, LifetimeDef, Token, Type,
-    Visibility,
+    AttrStyle, Data, DeriveInput, Expr, Fields, GenericParam, Generics, Token, Type, Visibility,
 };
 
 #[derive(Clone)]
@@ -75,18 +74,22 @@ impl ToTokens for StructureInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
         let vis = &self.vis;
-        let ty_tokens = self.parse_type_tokens();
-        let (_, ty_generics, where_clause) = self.generics.split_for_impl();
-        let lifetimes = self.generics.lifetimes().collect::<Vec<&LifetimeDef>>();
 
-        let impl_tokens = self.generate_impl_tokens();
+        let impl_tokens = self.tokenize_impl();
+        let ty_tokens = self.tokenize_types();
+        let (_, ty_generics, where_clause) = self.generics.split_for_impl();
+        let lifetimes = self
+            .generics
+            .lifetimes()
+            // Remove bounds
+            .map(|f| f.lifetime.to_token_stream())
+            .collect::<Vec<TokenStream>>();
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
 
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let empty_generics = self.empty_generics();
 
-        println!();
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
 
@@ -208,12 +211,12 @@ impl StructureInput {
     fn builder_functions<'a>(
         &'a self,
         builder_name: &'a Ident,
-        lifetimes: &'a Vec<&LifetimeDef>,
+        lifetimes: &'a Vec<TokenStream>,
         ty_tokens: &'a TokenStream,
     ) -> impl 'a + Iterator<Item = TokenStream> {
         let vis = &self.vis;
         let where_clause = &self.generics.where_clause;
-        let impl_tokens = self.generate_impl_tokens();
+        let impl_tokens = self.tokenize_impl();
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let all_builder_fields = self
             .required_fields
@@ -255,7 +258,7 @@ impl StructureInput {
             })
     }
 
-    fn parse_type_tokens(&self) -> TokenStream {
+    fn tokenize_types(&self) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
@@ -294,7 +297,9 @@ impl StructureInput {
         tokens
     }
 
-    fn generate_impl_tokens(&self) -> TokenStream {
+    /// Tokenize parameters for `impl` blocks.
+    /// It doesn't contain outer brackets, but lifetimes and trait bounds.
+    fn tokenize_impl(&self) -> TokenStream {
         let mut tokens = TokenStream::new();
         let generics = &self.generics;
 
