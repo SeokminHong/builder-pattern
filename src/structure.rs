@@ -75,9 +75,11 @@ impl ToTokens for StructureInput {
         let ident = &self.ident;
         let vis = &self.vis;
 
+        // Parse generic parameters.
         let impl_tokens = self.tokenize_impl();
         let ty_tokens = self.tokenize_types();
-        let (_, ty_generics, where_clause) = self.generics.split_for_impl();
+
+        let where_clause = &self.generics.where_clause;
         let lifetimes = self
             .generics
             .lifetimes()
@@ -89,7 +91,6 @@ impl ToTokens for StructureInput {
 
         let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let empty_generics = self.empty_generics();
-
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
 
@@ -105,7 +106,7 @@ impl ToTokens for StructureInput {
                 _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
                 #(#builder_fields),*
             }
-            impl <#impl_tokens> #ident #ty_generics #where_clause {
+            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
@@ -116,7 +117,7 @@ impl ToTokens for StructureInput {
             impl <#impl_tokens #(#optional_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#satisfied_generics),*>
                 #where_clause
             {
-                #vis fn build(self) -> #ident #ty_generics {
+                #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
                     #ident {
                         #(#struct_init_args),*
                     }
@@ -258,6 +259,8 @@ impl StructureInput {
             })
     }
 
+    /// Tokenize type parameters.
+    /// It skips lifetimes and has no outer brackets.
     fn tokenize_types(&self) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
