@@ -110,6 +110,98 @@ let test1 = Test::new().name(""); // Err(())
 let test2 = Test::new().name("Hello").unwrap().build();
 ```
 
+## Auto-Generated Documentions
+
+This crate generates documentations for the builder functions. If you documentate the fields,
+the builder functions for them also copy the documentations.
+
+### Example
+
+Example code:
+
+```rust
+#[derive(Builder)]
+struct Test {
+    /// A positive integer.
+    pub positive: i32,
+
+    /// A integer having zero as a default value.
+    #[default(0)]
+    pub zero: i32,
+}
+```
+
+Generated code:
+
+```rust
+impl Test {
+    /// Creating a builder.
+    /// ## Required fields
+    /// ### `positive`
+    /// - Type: `i32`
+    ///
+    /// A positive integer.
+    ///
+    /// ## Optional fields
+    /// ### `zero`
+    /// - Type: `i32`
+    /// - Default: `0`
+    ///
+    /// A integer having zero as a default value.
+    fn new() -> TestBuilder<(), ()> {
+        TestBuilder {
+            _phatom: PhantomData,
+            positive: None,
+            zero: Some(0),
+        }
+    }
+}
+
+struct TestBuilder<T1, T2> {
+    _phatom: PhantomData<(T1, T2)>,
+    positive: Option<i32>,
+    zero: Option<i32>,
+}
+
+impl TestBuilder<i32, i32> {
+    fn build() -> Test {
+        Test {
+            positive: self.positive.unwrap(),
+            zero: self.zero.unwrap(),
+        }
+    }
+}
+
+impl<T2> TestBuilder<(), T2> {
+    /// # positive
+    /// - Type: `i32`
+    ///
+    /// A positive integer.
+    pub fn positive(self, value: i32) -> TestBuilder<i32, T2> {
+        TestBuilder {
+            _phatom: PhantomData,
+            positive: Some(value),
+            zero: self.zero,
+        }
+    }
+}
+
+impl<T1> TestBuilder<T1, ()> {
+    /// # zero
+    /// - Type: `i32`
+    /// - Default: `0`
+    ///
+    /// A integer having zero as a default value.
+    pub fn zero(self, value: i32) -> TestBuilder<T1, i32> {
+        TestBuilder {
+            _phatom: PhantomData,
+            positive: self.positive,
+            zero: Some(value),
+        }
+    }
+}
+```
+
 ## How it works
 
 The following code

@@ -7,10 +7,12 @@ use builder_pattern::Builder;
 /// # struct Person {
 /// #     pub name: String,
 /// #     pub age: u8,
+/// #     pub city: String,
 /// # }
 /// let person  = Person::new()
 ///     .name("John")
 ///     .age(42)
+///     .city("New York")
 ///     .build();
 ///
 /// println!("{:?}", person);

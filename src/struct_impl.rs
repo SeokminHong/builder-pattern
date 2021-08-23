@@ -82,7 +82,7 @@ impl<'a> StructImpl<'a> {
             for f in self.input.required_fields.iter() {
                 let ident = &f.ident;
 
-                let doc = format!(" ### `{}`\n - Type: {}\n\n", ident, f.type_documents());
+                let doc = format!(" ### `{}`\n - Type: `{}`\n\n", ident, f.type_documents());
                 docs.push(parse_quote!(#[doc=#doc]));
                 docs.append(f.documents().as_mut());
             }
