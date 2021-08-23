@@ -1,0 +1,25 @@
+name: Build (WebAssembly)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check_examples:
+    name: Check Examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          target: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run check
+        run: |
+          cd examples
+          cargo check --all-targets
