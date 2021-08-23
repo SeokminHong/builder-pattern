@@ -1,3 +1,15 @@
+//! # builder-pattern
+//!
+//! A derivable macro for declaring a builder pattern.
+//!
+//! ## Features
+//!
+//! - **Chaining**: Can make structure with chained setters.
+//! - **Complex types are supported**: Lifetime and trait bounds, and where clauses are well supported.
+//! - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build`
+//! function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
+//! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
+
 mod attributes;
 mod structure;
 
@@ -12,20 +24,17 @@ extern crate syn;
 
 extern crate proc_macro2;
 
-/// # builder-pattern
-///
-/// A derivable macro for declaring a builder pattern.
+/// # Builder
 ///
 /// ## Usage
 ///
-/// ```rust
+/// ```
 /// use builder_pattern::Builder;
-///
-/// enum Gender {
-///     Male,
-///     Female,
-///     Nonbinary
-/// }
+/// # enum Gender {
+/// #     Male,
+/// #     Female,
+/// #     Nonbinary
+/// # }
 ///
 /// #[derive(Builder)]
 /// struct Person {
@@ -48,43 +57,46 @@ extern crate proc_macro2;
 ///     // because of `into` attribute!
 ///     .name("Jack")
 ///     .gender(Gender::Male).build();
+/// ```
 ///
+/// ```compile_fail
+/// # use builder_pattern::Builder;
+/// # enum Gender {
+/// #     Male,
+/// #     Female,
+/// #     Nonbinary
+/// # }
+///
+/// # #[derive(Builder)]
+/// # struct Person {
+/// #     #[into]
+/// #     name: String,
+/// #     age: i32,
+/// #     #[default(Gender::Nonbinary)]
+/// #     gender: Gender,
+/// # }
 /// // `name` field required - Compilation error.
 /// let p3 = Person::new()
 ///     .age(15)
 ///     .build();
 /// ```
 ///
-/// ## Get Started
-///
-/// Add `builder-pattern` to `Cargo.toml`.
-///
-/// ```toml
-/// // Cargo.toml
-/// [dependencies]
-/// builder-pattern = "0.3"
-/// ```
-///
-/// ## Features
-///
-/// - **Chaining**: Can make structure with chained setters.
-/// - **Complex types are supported**: Lifetime and trait bounds, and where clauses are well supported.
-/// - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build` function is allowed only the /// all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
-/// - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
-///
 /// ## Attributes
 ///
 /// ### `#[default(expr)]`
 ///
-/// A field having this attribute will be considered as optional and the `expr` will be evaluated as a default value of the field. /// `build` function can be called without providing this field.
+/// A field having this attribute will be considered as optional and the `expr` will be evaluated
+/// as a default value of the field. `build` function can be called without providing this field.
 ///
 /// ### `#[into]`
 ///
-/// A setter function for a field having this attribute will accept an `Into` trait as a parameter. You can use this setter with implicit /// conversion.
+/// A setter function for a field having this attribute will accept an `Into` trait as a parameter.
+/// You can use this setter with implicit conversion.
 ///
 /// Example:
 ///
 /// ```rust
+/// # use builder_pattern::Builder;
 /// #[derive(Builder)]
 /// struct Test {
 ///     #[into]
@@ -101,10 +113,12 @@ extern crate proc_macro2;
 ///
 /// Implement a validator for a field. `expr` could be a validating function that takes the field's type and returns `Result`.
 ///
-/// ```rust
+/// ```
+/// # use builder_pattern::Builder;
 /// #[derive(Builder)]
 /// struct Test {
 ///     #[validator(is_not_empty)]
+///     #[into]
 ///     pub name: String,
 /// }
 ///
@@ -116,15 +130,32 @@ extern crate proc_macro2;
 ///     }
 /// }
 ///
-/// let test1 = Test::new().name(""); // Err(())
-/// let test2 = Test::new().name("Hello").unwrap().build();
+/// let test1 = Test::new().name("Hello").unwrap().build();
+/// ```
+/// ```should_panic
+/// # use builder_pattern::Builder;
+/// # #[derive(Builder)]
+/// # struct Test {
+/// #     #[validator(is_not_empty)]
+/// #     #[into]
+/// #     pub name: String,
+/// # }
+/// #
+/// # fn is_not_empty(name: String) -> Result<String, ()> {
+/// #     if name.is_empty() {
+/// #         Err(())
+/// #     } else {
+/// #         Ok(name)
+/// #     }
+/// # }
+/// let test2 = Test::new().name("").unwrap().build(); // panic
 /// ```
 ///
 /// ## How it works
 ///
 /// The following code
 ///
-/// ```rust
+/// ```ignore
 /// #[derive(Builder)]
 /// struct Person {
 ///     #[into]
@@ -134,12 +165,11 @@ extern crate proc_macro2;
 ///     #[default(Gender::Nonbinary)]
 ///     gender: Gender,
 /// }
-///
 /// ```
 ///
 /// will generates:
 ///
-/// ```rust
+/// ```ignore
 /// struct PersonBuilder<T1, T2, T3> {
 ///     name: Option<String>,
 ///     age: Option<i32>,
