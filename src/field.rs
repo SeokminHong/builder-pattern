@@ -2,13 +2,24 @@ use super::attributes::FieldAttributes;
 
 use proc_macro2::Ident;
 use std::cmp::Ordering;
-use syn::{Type, Visibility};
+use syn::{Attribute, Type, Visibility};
 
 pub struct Field {
     pub vis: Visibility,
     pub ident: Ident,
     pub ty: Type,
     pub attrs: FieldAttributes,
+}
+
+impl Field {
+    pub fn documents(&self) -> Vec<Attribute> {
+        self.attrs
+            .documents
+            .iter()
+            .filter(|a| a.path.is_ident("doc"))
+            .map(|a| a.to_owned())
+            .collect()
+    }
 }
 
 impl Ord for Field {

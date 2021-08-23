@@ -3,10 +3,10 @@ use crate::struct_input::StructInput;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use std::str::FromStr;
-use syn::spanned::Spanned;
+use syn::{parse_quote, spanned::Spanned, Attribute};
 
-/// Implementation for the builder structure.
-/// It implements the `build` function.
+/// Implementation for the given structure.
+/// It creates a `new` function.
 pub struct StructImpl<'a> {
     pub input: &'a StructInput,
 }
@@ -24,9 +24,11 @@ impl<'a> ToTokens for StructImpl<'a> {
         let ty_tokens = self.input.tokenize_types();
 
         let builder_init_args = self.builder_init_args();
+        let docs = self.documents();
 
         tokens.extend(quote! {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
+                #(#docs)*
                 #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
@@ -44,7 +46,7 @@ impl<'a> StructImpl<'a> {
     }
 
     /// An iterator to describe initial state of builder.
-    pub fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
+    fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.input.required_fields.len() + self.input.optional_fields.len()))
             .into_iter()
             .map(|_| TokenStream::from_str("()").unwrap())
@@ -68,5 +70,46 @@ impl<'a> StructImpl<'a> {
                     #ident: Some(#expr)
                 }
             }))
+    }
+
+    fn documents(&self) -> Vec<Attribute> {
+        let mut docs: Vec<Attribute> = Vec::new();
+
+        docs.push(parse_quote!(#[doc=" Creating a builder."]));
+
+        docs.push(parse_quote!(#[doc=" ## Required Fields"]));
+        for f in self.input.required_fields.iter() {
+            let ident = &f.ident;
+            let ty = &f.ty;
+            let use_into = f.attrs.use_into;
+
+            let ty_tokens = if use_into {
+                format!("Into<{}>", ty.into_token_stream())
+            } else {
+                ty.into_token_stream().to_string()
+            };
+
+            let doc = format!(" ### `{}`\n - Type: {}", ident, ty_tokens);
+            docs.push(parse_quote!(#[doc=#doc]));
+            docs.append(f.documents().as_mut());
+        }
+
+        docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
+        for f in self.input.optional_fields.iter() {
+            let ident = &f.ident;
+            let ty = &f.ty;
+            let default = f.attrs.default.as_ref().unwrap();
+
+            let doc = format!(
+                " ### `{}`\n - Type: `{}`\n - Default: `{}`",
+                ident,
+                ty.into_token_stream(),
+                default.into_token_stream()
+            );
+            docs.push(parse_quote!(#[doc=#doc]));
+            docs.append(f.documents().as_mut());
+        }
+
+        docs
     }
 }

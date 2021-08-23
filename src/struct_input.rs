@@ -10,12 +10,15 @@ use quote::ToTokens;
 use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{AttrStyle, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility};
+use syn::{
+    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility,
+};
 
 pub struct StructInput {
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
+    pub attrs: Vec<Attribute>,
     pub required_fields: Vec<Field>,
     pub optional_fields: Vec<Field>,
 }
@@ -29,6 +32,8 @@ impl Parse for StructInput {
         let ident = input.ident;
         // Generics of the structure.
         let generics = input.generics;
+        // Attributes of the structure.
+        let attrs = input.attrs;
 
         // Fields of the structure.
         let fields = if let Data::Struct(d) = input.data {
@@ -65,6 +70,7 @@ impl Parse for StructInput {
             vis,
             ident,
             generics,
+            attrs,
             required_fields,
             optional_fields,
         })
