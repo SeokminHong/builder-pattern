@@ -93,6 +93,46 @@ extern crate proc_macro2;
 /// A field having this attribute will be considered as optional and the `expr` will be evaluated
 /// as a default value of the field. `build` function can be called without providing this field.
 ///
+///
+/// ### `#[hidden]`
+///
+/// If this attribute is present, the builder function would not be generated for the field.
+/// This field requires `default` attribute.
+///
+/// Example:
+///
+/// ```
+/// # use builder_pattern::Builder;
+/// # use uuid::Uuid;
+/// #[derive(Builder)]
+/// struct Test {
+///     #[default(Uuid::new_v4())]
+///     #[hidden]
+///     id: Uuid,
+///     name: String,
+/// }
+///
+/// let test1 = Test::new()         // TestBuilder<(), ()>
+///     .name(String::from("Joe"))  // TestBuilder<String, ()>
+///     .build();                   // Test
+/// ```
+/// ```compile_fail
+/// # use builder_pattern::Builder;
+/// # use uuid::Uuid;
+/// #[derive(Builder)]
+/// # struct Test {
+/// #     #[default(Uuid::new_v4())]
+/// #     #[hidden]
+/// #     id: Uuid,
+/// #     name: String,
+/// # }
+/// let test2 = Test::new()         // TestBuilder<(), ()>
+///     .name(String::from("Jack")) // TestBuilder<String>
+///     // Error: `id` function is not generated.
+///     .id(Uuid::from(String::from("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e")))
+///     .build();
+/// ```
+///
 /// ### `#[into]`
 ///
 /// A setter function for a field having this attribute will accept an `Into` trait as a parameter.
