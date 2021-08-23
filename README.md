@@ -49,7 +49,7 @@ let p3 = Person::new()
 Add `builder-pattern` to `Cargo.toml`.
 
 ```toml
-// Cargo.toml
+# Cargo.toml
 [dependencies]
 builder-pattern = "0.3"
 ```
