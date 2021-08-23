@@ -1,0 +1,68 @@
+name: Pull Request
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Format & Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run clippy
+        if: always()
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets -- -D warnings
+
+  check_examples:
+    name: Check Examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run check
+        run: |
+          cd examples
+          cargo check --all-targets
+
+  doc_tests:
+    name: Documentation Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run doctest
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --doc --features
