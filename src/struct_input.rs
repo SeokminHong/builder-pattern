@@ -1,6 +1,7 @@
 use crate::attributes::FieldAttributes;
 use crate::builder::{builder_decl::BuilderDecl, builder_impl::BuilderImpl};
 use crate::field::Field;
+use crate::struct_impl::StructImpl;
 
 use std::str::FromStr;
 
@@ -72,13 +73,13 @@ impl Parse for StructInput {
 
 impl ToTokens for StructInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        // Implement a `new` function creating the builder.
+        let builder_impl = StructImpl::new(self);
+        builder_impl.to_tokens(tokens);
+
         // Declare builder structure.
         let builder_decl = BuilderDecl::new(self);
         builder_decl.to_tokens(tokens);
-
-        // Implement builder structure for `build` function.
-        let builder_impl = BuilderImpl::new(self);
-        builder_impl.to_tokens(tokens);
 
         let ident = &self.ident;
         let vis = &self.vis;

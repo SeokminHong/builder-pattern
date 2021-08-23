@@ -14,6 +14,7 @@ mod attributes;
 mod builder;
 mod documents;
 mod field;
+mod struct_impl;
 mod struct_input;
 
 use proc_macro::TokenStream;
