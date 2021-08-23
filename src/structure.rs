@@ -239,8 +239,8 @@ impl StructureInput {
                 let mut builder_fields = all_builder_fields.clone();
                 builder_fields[index] = quote! {#ident: Some(value.into())};
                 index += 1;
-                
-                let (arg_type_gen, arg_type) = 
+
+                let (arg_type_gen, arg_type) =
                     if f.attrs.use_into {
                         (Some(quote!{<IntoType: Into<#ty>>}), TokenStream::from_str("IntoType").unwrap())
                     } else {
