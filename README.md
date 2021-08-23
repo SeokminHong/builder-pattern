@@ -10,12 +10,6 @@ A derivable macro for declaring a builder pattern.
 ```rust
 use builder_pattern::Builder;
 
-enum Gender {
-    Male,
-    Female,
-    Nonbinary
-}
-
 #[derive(Builder)]
 struct Person {
     #[into]
