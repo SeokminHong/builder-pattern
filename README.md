@@ -113,7 +113,9 @@ let test1 = Test::new()         // TestBuilder<()>
     .build();                   // Test
 
 let test2 = Test::new()         // TestBuilder<()>
-    .name("");                  // Err(())
+    .name("")                   // Err(())
+    .unwrap()                   // panic!
+    .build();
 ```
 
 ## Auto-Generated Documentions

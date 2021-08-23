@@ -100,7 +100,7 @@ extern crate proc_macro2;
 ///
 /// Example:
 ///
-/// ```rust
+/// ```
 /// # use builder_pattern::Builder;
 /// #[derive(Builder)]
 /// struct Test {
@@ -116,7 +116,8 @@ extern crate proc_macro2;
 ///
 /// ### `#[validator(expr)]`
 ///
-/// Implement a validator for a field. `expr` could be a validating function that takes the field's type and returns `Result`.
+/// Implement a validator for a field. `expr` could be a validating function that takes the field's
+/// type and returns `Result`.
 ///
 /// ```
 /// # use builder_pattern::Builder;
@@ -136,12 +137,32 @@ extern crate proc_macro2;
 /// }
 ///
 /// let test1 = Test::new()         // TestBuilder<()>
-///     .name("Hello")              // Ok(TestBuilder<String>, ())
+///     // `&str` is implicitly converted into `String`.
+///     .name("Hello")              // Ok(TestBuilder<String>)
 ///     .unwrap()                   // TestBuilder<String>
 ///     .build();                   // Test
-///
+/// ```
+/// ```should_panic
+/// # use builder_pattern::Builder;
+/// # #[derive(Builder)]
+/// # struct Test {
+/// #     #[validator(is_not_empty)]
+/// #     #[into]
+/// #     pub name: String,
+/// # }
+/// #
+/// # fn is_not_empty(name: String) -> Result<String, ()> {
+/// #     if name.is_empty() {
+/// #         Err(())
+/// #     } else {
+/// #         Ok(name)
+/// #     }
+/// # }
+/// #
 /// let test2 = Test::new()         // TestBuilder<()>
-///     .name("");                  // Err(())
+///     .name("")                   // Err(())
+///     .unwrap()                   // panic!
+///     .build();
 /// ```
 ///
 /// ## Auto-Generated Documentions
