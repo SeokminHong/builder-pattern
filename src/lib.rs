@@ -66,7 +66,7 @@ extern crate proc_macro2;
 /// #     Female,
 /// #     Nonbinary
 /// # }
-///
+/// #
 /// # #[derive(Builder)]
 /// # struct Person {
 /// #     #[into]
@@ -155,7 +155,16 @@ extern crate proc_macro2;
 ///
 /// The following code
 ///
-/// ```ignore
+/// ```
+/// # use builder_pattern::Builder;
+/// # enum Gender {
+/// #     Male,
+/// #     Female,
+/// #     Nonbinary
+/// # }
+/// # fn is_not_empty(val: String) -> Result<String, ()> {
+/// #    Ok(val)
+/// # }
 /// #[derive(Builder)]
 /// struct Person {
 ///     #[into]
@@ -169,11 +178,25 @@ extern crate proc_macro2;
 ///
 /// will generates:
 ///
-/// ```ignore
+/// ```
+/// # use ::std::marker::PhantomData;
+/// # enum Gender {
+/// #     Male,
+/// #     Female,
+/// #     Nonbinary
+/// # }
+/// # struct Person {
+/// #     name: String,
+/// #     age: i32,
+/// #     gender: Gender,
+/// # }
+/// # fn is_not_empty(val: String) -> Result<String, ()> {
+/// #    Ok(val)
+/// # }
 /// struct PersonBuilder<T1, T2, T3> {
 ///     name: Option<String>,
 ///     age: Option<i32>,
-///     gender: Option<gender>,
+///     gender: Option<Gender>,
 ///     _phantom: PhantomData<(T1, T2, T3)>
 /// }
 ///
@@ -196,7 +219,7 @@ extern crate proc_macro2;
 ///     fn name<IntoType: Into<String>>(self, value: IntoType) ->
 ///         Result<PersonBuilder<String, T2, T3>, ()> {
 ///         // Validation check.
-///         match is_not_empty(value) {
+///         match is_not_empty(value.into()) {
 ///             Ok(value) => Ok(PersonBuilder {
 ///                 // Converts `IntoType` into `String`.
 ///                 name: Some(value.into()),
@@ -204,7 +227,7 @@ extern crate proc_macro2;
 ///                 gender: self.gender,
 ///                 _phantom: PhantomData,
 ///             }),
-///             Err(_) => Err(_)
+///             Err(_) => Err(())
 ///         }
 ///     }
 /// }
@@ -217,6 +240,7 @@ extern crate proc_macro2;
 ///             age: Some(value),
 ///             gender: self.gender,
 ///             _phantom: PhantomData,
+///         }
 ///     }
 /// }
 ///

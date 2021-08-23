@@ -130,7 +130,7 @@ will generates:
 struct PersonBuilder<T1, T2, T3> {
     name: Option<String>,
     age: Option<i32>,
-    gender: Option<gender>,
+    gender: Option<Gender>,
     _phantom: PhantomData<(T1, T2, T3)>
 }
 
@@ -153,7 +153,7 @@ impl<T2, T3> PersonBuilder<(), T2, T3> {
     fn name<IntoType: Into<String>>(self, value: IntoType) ->
         Result<PersonBuilder<String, T2, T3>, ()> {
         // Validation check.
-        match is_not_empty(value) {
+        match is_not_empty(value.into()) {
             Ok(value) => Ok(PersonBuilder {
                 // Converts `IntoType` into `String`.
                 name: Some(value.into()),
@@ -161,7 +161,7 @@ impl<T2, T3> PersonBuilder<(), T2, T3> {
                 gender: self.gender,
                 _phantom: PhantomData,
             }),
-            Err(_) => Err(_)
+            Err(_) => Err(())
         }
     }
 }
@@ -174,6 +174,7 @@ impl<T1, T3> PersonBuilder<T1, (), T3> {
             age: Some(value),
             gender: self.gender,
             _phantom: PhantomData,
+        }
     }
 }
 
