@@ -1,6 +1,7 @@
 use super::attributes::FieldAttributes;
 
 use proc_macro2::Ident;
+use quote::ToTokens;
 use std::cmp::Ordering;
 use syn::{Attribute, Type, Visibility};
 
@@ -19,6 +20,15 @@ impl Field {
             .filter(|a| a.path.is_ident("doc"))
             .map(|a| a.to_owned())
             .collect()
+    }
+
+    pub fn type_documents(&self) -> String {
+        let ty_token = self.ty.clone().into_token_stream();
+        if self.attrs.use_into {
+            format!("Into<{}>", ty_token)
+        } else {
+            ty_token.to_string()
+        }
     }
 }
 

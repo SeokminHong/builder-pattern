@@ -80,16 +80,8 @@ impl<'a> StructImpl<'a> {
         docs.push(parse_quote!(#[doc=" ## Required Fields"]));
         for f in self.input.required_fields.iter() {
             let ident = &f.ident;
-            let ty = &f.ty;
-            let use_into = f.attrs.use_into;
 
-            let ty_tokens = if use_into {
-                format!("Into<{}>", ty.into_token_stream())
-            } else {
-                ty.into_token_stream().to_string()
-            };
-
-            let doc = format!(" ### `{}`\n - Type: {}", ident, ty_tokens);
+            let doc = format!(" ### `{}`\n - Type: {}", ident, f.type_documents());
             docs.push(parse_quote!(#[doc=#doc]));
             docs.append(f.documents().as_mut());
         }
@@ -97,13 +89,12 @@ impl<'a> StructImpl<'a> {
         docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
         for f in self.input.optional_fields.iter() {
             let ident = &f.ident;
-            let ty = &f.ty;
             let default = f.attrs.default.as_ref().unwrap();
 
             let doc = format!(
                 " ### `{}`\n - Type: `{}`\n - Default: `{}`",
                 ident,
-                ty.into_token_stream(),
+                f.type_documents(),
                 default.into_token_stream()
             );
             docs.push(parse_quote!(#[doc=#doc]));

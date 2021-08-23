@@ -1,9 +1,10 @@
+use crate::{field::Field, struct_input::StructInput};
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use std::str::FromStr;
 use syn::spanned::Spanned;
-
-use crate::struct_input::StructInput;
+use syn::{parse_quote, Attribute};
 
 pub struct BuilderFunctions<'a> {
     pub input: &'a StructInput,
@@ -73,10 +74,14 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                         #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>
                     }, ret_expr)
                 };
+
+                let documents = BuilderFunctions::documents(f);
+
                 tokens.extend(quote! {
                     impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
                         #where_clause
                     {
+                        #(#documents)*
                         #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #ret_type {
                             #ret_expr
                         }
@@ -89,5 +94,25 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
 impl<'a> BuilderFunctions<'a> {
     pub fn new(input: &'a StructInput) -> Self {
         Self { input }
+    }
+
+    fn documents(f: &Field) -> Vec<Attribute> {
+        let mut docs: Vec<Attribute> = Vec::new();
+
+        let default = match f.attrs.default.as_ref() {
+            Some(expr) => format!("\n - Default: `{}`", expr.into_token_stream().to_string()),
+            None => String::from(""),
+        };
+        let doc = format!(
+            " ## `{}`\n - Type: `{}`{}",
+            f.ident,
+            f.type_documents(),
+            default
+        );
+        docs.push(parse_quote!(#[doc=#doc]));
+
+        docs.append(f.documents().as_mut());
+
+        docs
     }
 }
