@@ -233,7 +233,7 @@ extern crate proc_macro2;
 /// }
 ///
 /// // `build` function
-/// // It can be called when `T3` is `()`.
+/// // It can be called regardless of whether `T3` is `()` or `Gender`.
 /// impl<T3> PersonBuilder<String, i32, T3> {
 ///     fn build(self) -> Person {
 ///         Person {

@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 
 #[derive(Builder, Debug)]
 struct Test {
-    #[validator(to_absolute)]
+    #[validator(to_positive)]
     positive: i32,
 }
 
-fn to_absolute(val: i32) -> Result<i32, ()> {
+fn to_positive(val: i32) -> Result<i32, ()> {
     match val.cmp(&0) {
         Ordering::Greater => Ok(val),
         Ordering::Less => Ok(-val),
