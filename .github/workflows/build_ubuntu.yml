@@ -6,6 +6,7 @@ on:
     branches: [main]
 
 jobs:
+  # Only lints for Ubuntu.
   lint:
     name: Format & Clippy
     runs-on: ubuntu-latest
@@ -49,6 +50,7 @@ jobs:
           cd examples
           cargo check --all-targets
 
+  # Only test docs for Ubuntu.
   doc_tests:
     name: Documentation Tests
     runs-on: ubuntu-latest

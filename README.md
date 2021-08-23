@@ -2,6 +2,8 @@
 
 [![creates.io](https://img.shields.io/crates/v/builder-pattern?logo=rust)](https://crates.io/crates/builder-pattern)
 [![API Docs](https://docs.rs/builder-pattern/badge.svg?logo=docs-rs)](https://docs.rs/builder-pattern/)
+[![Build Status (Windows)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_windows.yml/badge.svg)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_windows.yml)
+[![Build Status (MacOS)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_macos.yml/badge.svg)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_macos.yml)
 [![Build Status (Ubuntu)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_ubuntu.yml/badge.svg)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_ubuntu.yml)
 
 A derivable macro for declaring a builder pattern.
