@@ -1,5 +1,8 @@
 # builder-pattern
 
+[![creates.io](https://img.shields.io/crates/v/builder-pattern?logo=rust)](https://crates.io/crates/builder-pattern)
+[![API Docs](https://docs.rs/builder-pattern/badge.svg?logo=docs-rs)](https://docs.rs/builder-pattern/)
+
 A derivable macro for declaring a builder pattern.
 
 ## Usage
