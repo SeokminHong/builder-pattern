@@ -127,7 +127,7 @@ extern crate proc_macro2;
 /// #     name: String,
 /// # }
 /// let test2 = Test::new()         // TestBuilder<(), ()>
-///     .name(String::from("Jack")) // TestBuilder<String>
+///     .name(String::from("Jack")) // TestBuilder<String, ()>
 ///     // Error: `id` function is not generated.
 ///     .id(Uuid::from(String::from("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e")))
 ///     .build();

@@ -8,7 +8,7 @@
 [![Build Status (Ubuntu)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_ubuntu.yml/badge.svg)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_ubuntu.yml)
 [![Build Status (WebAssembly)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_wasm.yml/badge.svg)](https://github.com/SeokminHong/builder-pattern/actions/workflows/build_wasm.yml)
 
-A derivable macro for declaring a builder pattern.
+A derivable macro for declaring a builder pattern. This crate is highly inspired by [derive_builder](https://github.com/colin-kiegel/rust-derive-builder).
 
 ## Usage
 
@@ -88,7 +88,7 @@ let test1 = Test::new()         // TestBuilder<(), ()>
     .build();                   // Test
 
 let test2 = Test::new()         // TestBuilder<(), ()>
-    .name(String::from("Jack")) // TestBuilder<String>
+    .name(String::from("Jack")) // TestBuilder<String, ()>
     // Error: `id` function is not generated.
     .id(Uuid::from(String::from("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e")))
     .build();
