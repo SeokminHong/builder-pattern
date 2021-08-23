@@ -9,13 +9,17 @@
 //! - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build`
 //! function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
 //! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
+//! - **Auto-generated documentations**: Documentations for the builder functions are automatically generated.
 
 mod attributes;
-mod structure;
+mod builder;
+mod field;
+mod struct_impl;
+mod struct_input;
 
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use structure::StructureInput;
+use struct_input::StructInput;
 use syn::parse_macro_input;
 
 #[macro_use]
@@ -270,6 +274,6 @@ extern crate proc_macro2;
 /// ```
 #[proc_macro_derive(Builder, attributes(default, into, validator))]
 pub fn derive_builder(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as StructureInput);
+    let input = parse_macro_input!(input as StructInput);
     TokenStream::from(input.into_token_stream())
 }
