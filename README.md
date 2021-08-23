@@ -125,9 +125,9 @@ struct Test {
     pub name: String,
 }
 
-fn is_not_empty(name: String) -> Result<String, ()> {
+fn is_not_empty(name: String) -> Result<String, &'static str> {
     if name.is_empty() {
-        Err(())
+        Err("Name cannot be empty.")
     } else {
         Ok(name)
     }
@@ -139,7 +139,7 @@ let test1 = Test::new()         // TestBuilder<()>
     .build();                   // Test
 
 let test2 = Test::new()         // TestBuilder<()>
-    .name("")                   // Err(())
+    .name("")                   // Err(String{ "Name cannot be empty." })
     .unwrap()                   // panic!
     .build();
 ```

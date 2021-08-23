@@ -66,12 +66,12 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 };
                 let (ret_type, ret_expr) = match &f.attrs.validator {
                     Some(v) => (quote! {
-                        ::std::result::Result< #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, ()>
+                        ::std::result::Result<#builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, String>
                     }, quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
                         match #v (value.into()) {
                             ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr),
-                            ::std::result::Result::Err(_) => ::std::result::Result::Err(())
+                            ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
                         }
                     }),
                     None => (quote! {

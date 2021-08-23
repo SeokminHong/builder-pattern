@@ -168,9 +168,9 @@ extern crate proc_macro2;
 ///     pub name: String,
 /// }
 ///
-/// fn is_not_empty(name: String) -> Result<String, ()> {
+/// fn is_not_empty(name: String) -> Result<String, &'static str> {
 ///     if name.is_empty() {
-///         Err(())
+///         Err("Name cannot be empty.")
 ///     } else {
 ///         Ok(name)
 ///     }
@@ -191,16 +191,16 @@ extern crate proc_macro2;
 /// #     pub name: String,
 /// # }
 /// #
-/// # fn is_not_empty(name: String) -> Result<String, ()> {
+/// # fn is_not_empty(name: String) -> Result<String, &'static str> {
 /// #     if name.is_empty() {
-/// #         Err(())
+/// #         Err("Name cannot be empty.")
 /// #     } else {
 /// #         Ok(name)
 /// #     }
 /// # }
 /// #
 /// let test2 = Test::new()         // TestBuilder<()>
-///     .name("")                   // Err(())
+///     .name("")                   // Err(String{ "Validation failed: \"Name cannot be empty.\"" })
 ///     .unwrap()                   // panic!
 ///     .build();
 /// ```

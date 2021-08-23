@@ -1,6 +1,6 @@
 [package]
 name = "builder-pattern"
-version = "0.3.7"
+version = "0.3.8"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"

@@ -7,11 +7,11 @@ struct Test {
     positive: i32,
 }
 
-fn to_positive(val: i32) -> Result<i32, ()> {
+fn to_positive(val: i32) -> Result<i32, &'static str> {
     match val.cmp(&0) {
         Ordering::Greater => Ok(val),
         Ordering::Less => Ok(-val),
-        Ordering::Equal => Err(()),
+        Ordering::Equal => Err("The input value is zero."),
     }
 }
 
@@ -20,7 +20,7 @@ fn main() {
     let b = Test::new().positive(-5).unwrap().build();
     println!("a: {:?}, b: {:?}", a, b);
 
-    if Test::new().positive(0).is_err() {
-        println!("Invalid zero detected");
+    if let Err(err) = Test::new().positive(0) {
+        println!("{}", err);
     }
 }
