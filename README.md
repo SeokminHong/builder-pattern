@@ -24,22 +24,23 @@ struct Person {
     gender: Gender,
 }
 
-let p1 = Person::new()
-    .name(String::from("Joe"))
-    .age(27)
+let p1 = Person::new()          // PersonBuilder<(), (), ()>
+    .name(String::from("Joe"))  // PersonBuilder<String, (), ()>
+    .age(27)                    // PersonBuilder<String, i32, ()>
     .build();
 
 // Orders does not matter.
-let p2 = Person::new()
-    .age(32)
+let p2 = Person::new()          // PersonBuilder<(), (), ()>
+    .age(32)                    // PersonBuilder<(), i32, ()>
     // `&str` is implicitly converted into `String`
     // because of `into` attribute!
-    .name("Jack")
-    .gender(Gender::Male).build();
+    .name("Jack")               // PersonBuilder<String, i32, ()>
+    .gender(Gender::Male)       // PersonBuilder<String, i32, Gender>
+    .build();                   // Person
 
 // `name` field required - Compilation error.
-let p3 = Person::new()
-    .age(15)
+let p3 = Person::new()          // PersonBuilder<(), (), ()>
+    .age(15)                    // PersonBuilder<(), i32, ()>
     .build();
 ```
 
@@ -80,10 +81,10 @@ struct Test {
     pub name: String,
 }
 
-let test = Test::new()
+let test = Test::new()          // TestBuilder<()>
     // `&str` is implicitly converted into `String`.
-    .name("Hello")
-    .build();
+    .name("Hello")              // TestBuilder<String>
+    .build();                   // Test
 ```
 
 ### `#[validator(expr)]`
@@ -106,8 +107,13 @@ fn is_not_empty(name: String) -> Result<String, ()> {
     }
 }
 
-let test1 = Test::new().name(""); // Err(())
-let test2 = Test::new().name("Hello").unwrap().build();
+let test1 = Test::new()         // TestBuilder<()>
+    .name("Hello")              // Ok(TestBuilder<String>, ())
+    .unwrap()                   // TestBuilder<String>
+    .build();                   // Test
+
+let test2 = Test::new()         // TestBuilder<()>
+    .name("");                  // Err(())
 ```
 
 ## Auto-Generated Documentions

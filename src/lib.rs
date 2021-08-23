@@ -49,18 +49,19 @@ extern crate proc_macro2;
 ///     gender: Gender,
 /// }
 ///
-/// let p1 = Person::new()
-///     .name(String::from("Joe"))
-///     .age(27)
+/// let p1 = Person::new()          // PersonBuilder<(), (), ()>
+///     .name(String::from("Joe"))  // PersonBuilder<String, (), ()>
+///     .age(27)                    // PersonBuilder<String, i32, ()>
 ///     .build();
-///
+///     
 /// // Orders does not matter.
-/// let p2 = Person::new()
-///     .age(32)
+/// let p2 = Person::new()          // PersonBuilder<(), (), ()>
+///     .age(32)                    // PersonBuilder<(), i32, ()>
 ///     // `&str` is implicitly converted into `String`
 ///     // because of `into` attribute!
-///     .name("Jack")
-///     .gender(Gender::Male).build();
+///     .name("Jack")               // PersonBuilder<String, i32, ()>
+///     .gender(Gender::Male)       // PersonBuilder<String, i32, Gender>
+///     .build();                   // Person
 /// ```
 ///
 /// ```compile_fail
@@ -80,8 +81,8 @@ extern crate proc_macro2;
 /// #     gender: Gender,
 /// # }
 /// // `name` field required - Compilation error.
-/// let p3 = Person::new()
-///     .age(15)
+/// let p3 = Person::new()          // PersonBuilder<(), (), ()>
+///     .age(15)                    // PersonBuilder<(), i32, ()>
 ///     .build();
 /// ```
 ///
@@ -107,10 +108,10 @@ extern crate proc_macro2;
 ///     pub name: String,
 /// }
 ///
-/// let test = Test::new()
+/// let test = Test::new()          // TestBuilder<()>
 ///     // `&str` is implicitly converted into `String`.
-///     .name("Hello")
-///     .build();
+///     .name("Hello")              // TestBuilder<String>
+///     .build();                   // Test
 /// ```
 ///
 /// ### `#[validator(expr)]`
@@ -134,25 +135,13 @@ extern crate proc_macro2;
 ///     }
 /// }
 ///
-/// let test1 = Test::new().name("Hello").unwrap().build();
-/// ```
-/// ```should_panic
-/// # use builder_pattern::Builder;
-/// # #[derive(Builder)]
-/// # struct Test {
-/// #     #[validator(is_not_empty)]
-/// #     #[into]
-/// #     pub name: String,
-/// # }
-/// #
-/// # fn is_not_empty(name: String) -> Result<String, ()> {
-/// #     if name.is_empty() {
-/// #         Err(())
-/// #     } else {
-/// #         Ok(name)
-/// #     }
-/// # }
-/// let test2 = Test::new().name("").unwrap().build(); // panic
+/// let test1 = Test::new()         // TestBuilder<()>
+///     .name("Hello")              // Ok(TestBuilder<String>, ())
+///     .unwrap()                   // TestBuilder<String>
+///     .build();                   // Test
+///
+/// let test2 = Test::new()         // TestBuilder<()>
+///     .name("");                  // Err(())
 /// ```
 ///
 /// ## Auto-Generated Documentions
