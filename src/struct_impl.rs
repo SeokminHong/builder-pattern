@@ -77,28 +77,32 @@ impl<'a> StructImpl<'a> {
 
         docs.push(parse_quote!(#[doc=" Creating a builder."]));
 
-        docs.push(parse_quote!(#[doc=" ## Required Fields"]));
-        for f in self.input.required_fields.iter() {
-            let ident = &f.ident;
+        if !self.input.required_fields.is_empty() {
+            docs.push(parse_quote!(#[doc=" ## Required Fields"]));
+            for f in self.input.required_fields.iter() {
+                let ident = &f.ident;
 
-            let doc = format!(" ### `{}`\n - Type: {}", ident, f.type_documents());
-            docs.push(parse_quote!(#[doc=#doc]));
-            docs.append(f.documents().as_mut());
+                let doc = format!(" ### `{}`\n - Type: {}\n\n", ident, f.type_documents());
+                docs.push(parse_quote!(#[doc=#doc]));
+                docs.append(f.documents().as_mut());
+            }
         }
 
-        docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
-        for f in self.input.optional_fields.iter() {
-            let ident = &f.ident;
-            let default = f.attrs.default.as_ref().unwrap();
+        if !self.input.optional_fields.is_empty() {
+            docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
+            for f in self.input.optional_fields.iter() {
+                let ident = &f.ident;
+                let default = f.attrs.default.as_ref().unwrap();
 
-            let doc = format!(
-                " ### `{}`\n - Type: `{}`\n - Default: `{}`",
-                ident,
-                f.type_documents(),
-                default.into_token_stream()
-            );
-            docs.push(parse_quote!(#[doc=#doc]));
-            docs.append(f.documents().as_mut());
+                let doc = format!(
+                    " ### `{}`\n - Type: `{}`\n - Default: `{}`\n\n",
+                    ident,
+                    f.type_documents(),
+                    default.into_token_stream()
+                );
+                docs.push(parse_quote!(#[doc=#doc]));
+                docs.append(f.documents().as_mut());
+            }
         }
 
         docs

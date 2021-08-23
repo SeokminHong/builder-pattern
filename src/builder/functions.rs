@@ -104,7 +104,7 @@ impl<'a> BuilderFunctions<'a> {
             None => String::from(""),
         };
         let doc = format!(
-            " ## `{}`\n - Type: `{}`{}",
+            " # {}\n - Type: `{}`{}\n\n",
             f.ident,
             f.type_documents(),
             default
