@@ -1,4 +1,5 @@
 use crate::attributes::FieldAttributes;
+use crate::builder::functions::BuilderFunctions;
 use crate::builder::{builder_decl::BuilderDecl, builder_impl::BuilderImpl};
 use crate::field::Field;
 use crate::struct_impl::StructImpl;
@@ -9,7 +10,6 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::spanned::Spanned;
 use syn::{
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility,
 };
@@ -91,18 +91,8 @@ impl ToTokens for StructInput {
         let builder_impl = BuilderImpl::new(self);
         builder_impl.to_tokens(tokens);
 
-        // Parse generic parameters.
-        let ty_tokens = self.tokenize_types();
-
-        let lifetimes = self.lifetimes();
-
-        let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
-
-        let builder_functions = self.builder_functions(&builder_name, &lifetimes, &ty_tokens);
-
-        tokens.extend(quote! {
-            #(#builder_functions)*
-        });
+        let builder_func = BuilderFunctions::new(self);
+        builder_func.to_tokens(tokens);
     }
 }
 
@@ -140,81 +130,6 @@ impl StructInput {
                 #ident: Option<#ty>
             }
         })
-    }
-
-    /// An iterator to describe builder functions.
-    fn builder_functions<'a>(
-        &'a self,
-        builder_name: &'a Ident,
-        lifetimes: &'a [TokenStream],
-        ty_tokens: &'a TokenStream,
-    ) -> impl 'a + Iterator<Item = TokenStream> {
-        let vis = &self.vis;
-        let where_clause = &self.generics.where_clause;
-        let impl_tokens = self.tokenize_impl();
-        let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
-        let all_builder_fields = self
-            .required_fields
-            .iter()
-            .chain(self.optional_fields.iter())
-            .map(|f| {
-                let ident = &f.ident;
-                quote! { #ident: self.#ident }
-            })
-            .collect::<Vec<TokenStream>>();
-
-        let mut index = 0;
-        self.required_fields
-            .iter()
-            .chain(self.optional_fields.iter())
-            .map(move |f| {
-                let (ident, ty) = (&f.ident, &f.ty);
-                let mut other_generics = all_generics.clone();
-                other_generics.remove(index);
-                let mut before_generics = all_generics.clone();
-                before_generics[index] = TokenStream::from_str("()").unwrap();
-                let mut after_generics = all_generics.clone();
-                after_generics[index] = quote! {#ty};
-                let mut builder_fields = all_builder_fields.clone();
-                builder_fields[index] = quote! {#ident: Some(value.into())};
-                index += 1;
-
-                let (arg_type_gen, arg_type) =
-                    if f.attrs.use_into {
-                        (Some(quote!{<IntoType: Into<#ty>>}), TokenStream::from_str("IntoType").unwrap())
-                    } else {
-                        (None, quote! {#ty})
-                    };
-                let ret_expr = quote! {
-                    #builder_name {
-                        _phantom: ::std::marker::PhantomData,
-                        #(#builder_fields),*
-                    }
-                };
-                let (ret_type, ret_expr) = match &f.attrs.validator {
-                    Some(v) => (quote! {
-                        ::std::result::Result< #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, ()>
-                    }, quote_spanned! { v.span() =>
-                        #[allow(clippy::useless_conversion)]
-                        match #v (value.into()) {
-                            ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr),
-                            ::std::result::Result::Err(_) => ::std::result::Result::Err(())
-                        }
-                    }),
-                    None => (quote! {
-                        #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>
-                    }, ret_expr)
-                };
-                quote! {
-                    impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
-                        #where_clause
-                    {
-                        #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #ret_type {
-                            #ret_expr
-                        }
-                    }
-                }
-            })
     }
 
     /// Tokenize type parameters.
