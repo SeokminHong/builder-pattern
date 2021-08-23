@@ -256,7 +256,8 @@ impl StructureInput {
                     Some(v) => (quote! {
                         ::std::result::Result< #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, ()>
                     }, quote_spanned! { v.span() =>
-                        match #v (value) {
+                        #[allow(clippy::useless_conversion)]
+                        match #v (value.into()) {
                             ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr),
                             ::std::result::Result::Err(_) => ::std::result::Result::Err(())
                         }
