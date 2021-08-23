@@ -1,4 +1,5 @@
 use builder_pattern::Builder;
+use uuid::Uuid;
 
 #[derive(Builder, Debug)]
 struct Test {
@@ -6,6 +7,9 @@ struct Test {
     name: String,
     #[default(19)]
     age: u8,
+    #[default(Uuid::new_v4())]
+    #[hidden]
+    id: Uuid,
 }
 
 fn main() {

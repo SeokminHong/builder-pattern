@@ -37,6 +37,10 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .iter()
             .chain(self.input.optional_fields.iter())
             .for_each(move |f| {
+                if f.attrs.hidden {
+                    index += 1;
+                    return;
+                }
                 let (ident, ty) = (&f.ident, &f.ty);
                 let mut other_generics = all_generics.clone();
                 other_generics.remove(index);
@@ -82,7 +86,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                         #where_clause
                     {
                         #(#documents)*
-                        #vis fn #ident #arg_type_gen(mut self, value: #arg_type) -> #ret_type {
+                        #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type {
                             #ret_expr
                         }
                     }
