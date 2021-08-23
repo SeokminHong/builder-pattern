@@ -11,13 +11,14 @@
 //! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
 
 mod attributes;
+mod builder;
 mod documents;
 mod field;
 mod structure;
 
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use structure::StructureInput;
+use structure::StructInput;
 use syn::parse_macro_input;
 
 #[macro_use]
@@ -272,6 +273,6 @@ extern crate proc_macro2;
 /// ```
 #[proc_macro_derive(Builder, attributes(default, into, validator))]
 pub fn derive_builder(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as StructureInput);
+    let input = parse_macro_input!(input as StructInput);
     TokenStream::from(input.into_token_stream())
 }

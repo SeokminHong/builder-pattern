@@ -1,5 +1,5 @@
 use crate::attributes::FieldAttributes;
-use crate::structure::StructureInput;
+use crate::structure::StructInput;
 
 use syn::Attribute;
 
@@ -7,7 +7,7 @@ pub trait DocumentsGenerator {
     fn generate_documents(&self) -> Vec<Attribute>;
 }
 
-impl DocumentsGenerator for StructureInput {
+impl DocumentsGenerator for StructInput {
     fn generate_documents(&self) -> Vec<Attribute> {
         let mut docs: Vec<Attribute> = Vec::new();
 

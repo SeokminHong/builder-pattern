@@ -1,5 +1,5 @@
 use crate::attributes::FieldAttributes;
-use crate::documents::DocumentsGenerator;
+use crate::builder::decl::BuilderDecl;
 use crate::field::Field;
 
 use std::str::FromStr;
@@ -11,8 +11,7 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{AttrStyle, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility};
 
-
-pub struct StructureInput {
+pub struct StructInput {
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
@@ -20,7 +19,7 @@ pub struct StructureInput {
     pub optional_fields: Vec<Field>,
 }
 
-impl Parse for StructureInput {
+impl Parse for StructInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let input: DeriveInput = input.parse()?;
         // Visibility of the sturcture.
@@ -61,7 +60,7 @@ impl Parse for StructureInput {
         optional_fields.sort();
         required_fields.sort();
 
-        Ok(StructureInput {
+        Ok(StructInput {
             vis,
             ident,
             generics,
@@ -71,11 +70,14 @@ impl Parse for StructureInput {
     }
 }
 
-impl ToTokens for StructureInput {
+impl ToTokens for StructInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        // Declare builder structure.
+        let builder_decl = BuilderDecl::new(self);
+        builder_decl.to_tokens(tokens);
+
         let ident = &self.ident;
         let vis = &self.vis;
-        let documents = self.generate_documents();
 
         // Parse generic parameters.
         let impl_tokens = self.tokenize_impl();
@@ -91,12 +93,10 @@ impl ToTokens for StructureInput {
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
 
-        let all_generics = self.all_generics().collect::<Vec<TokenStream>>();
         let empty_generics = self.empty_generics();
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
 
-        let builder_fields = self.builder_fields();
         let builder_init_args = self.builder_init_args();
 
         let struct_init_args = self.struct_init_args();
@@ -104,11 +104,6 @@ impl ToTokens for StructureInput {
         let builder_functions = self.builder_functions(&builder_name, &lifetimes, &ty_tokens);
 
         tokens.extend(quote! {
-            #(#documents)*
-            #vis struct #builder_name <#impl_tokens #(#all_generics),*> #where_clause {
-                _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
-                #(#builder_fields),*
-            }
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
                     #builder_name {
@@ -131,9 +126,14 @@ impl ToTokens for StructureInput {
     }
 }
 
-impl StructureInput {
+impl StructInput {
+    /// Name of the builder structure.
+    pub fn builder_name(&self) -> Ident {
+        Ident::new(&format!("{}Builder", self.ident), Span::call_site())
+    }
+
     /// An iterator for generics like [U1, U2, ...].
-    fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
+    pub fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
@@ -166,7 +166,7 @@ impl StructureInput {
     }
 
     /// An iterator for fields of the builder.
-    fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
+    pub fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         let iters = self
             .required_fields
             .iter()
@@ -288,7 +288,7 @@ impl StructureInput {
 
     /// Tokenize type parameters.
     /// It skips lifetimes and has no outer brackets.
-    fn tokenize_types(&self) -> TokenStream {
+    pub fn tokenize_types(&self) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
@@ -329,7 +329,7 @@ impl StructureInput {
 
     /// Tokenize parameters for `impl` blocks.
     /// It doesn't contain outer brackets, but lifetimes and trait bounds.
-    fn tokenize_impl(&self) -> TokenStream {
+    pub fn tokenize_impl(&self) -> TokenStream {
         let mut tokens = TokenStream::new();
         let generics = &self.generics;
 
