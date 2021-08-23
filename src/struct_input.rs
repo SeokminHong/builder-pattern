@@ -79,43 +79,28 @@ impl Parse for StructInput {
 
 impl ToTokens for StructInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        // Implement a `new` function creating the builder.
-        let builder_impl = StructImpl::new(self);
-        builder_impl.to_tokens(tokens);
+        // Implement the `new` function creating the builder.
+        let struct_impl = StructImpl::new(self);
+        struct_impl.to_tokens(tokens);
 
         // Declare builder structure.
         let builder_decl = BuilderDecl::new(self);
         builder_decl.to_tokens(tokens);
 
-        let ident = &self.ident;
-        let vis = &self.vis;
+        // Implement the `build` function for the builder.
+        let builder_impl = BuilderImpl::new(self);
+        builder_impl.to_tokens(tokens);
 
         // Parse generic parameters.
-        let impl_tokens = self.tokenize_impl();
         let ty_tokens = self.tokenize_types();
 
-        let where_clause = &self.generics.where_clause;
         let lifetimes = self.lifetimes();
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
 
-        let optional_generics = self.optional_generics();
-        let satisfied_generics = self.satified_generics();
-
-        let struct_init_args = self.struct_init_args();
-
         let builder_functions = self.builder_functions(&builder_name, &lifetimes, &ty_tokens);
 
         tokens.extend(quote! {
-            impl <#impl_tokens #(#optional_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#satisfied_generics),*>
-                #where_clause
-            {
-                #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
-                    #ident {
-                        #(#struct_init_args),*
-                    }
-                }
-            }
             #(#builder_functions)*
         });
     }
@@ -143,25 +128,6 @@ impl StructInput {
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
     }
 
-    /// An iterator for optional fields.
-    fn optional_generics(&self) -> impl Iterator<Item = TokenStream> {
-        let offset = self.required_fields.len() + 1;
-        (0..self.optional_fields.len()).into_iter().map(move |i| {
-            TokenStream::from_str(&format!("TyBuilderPattern{}", i + offset)).unwrap()
-        })
-    }
-
-    /// An iterator to describe when the builder has enough types to build the struct.
-    fn satified_generics(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        self.required_fields
-            .iter()
-            .map(|f| {
-                let ty = &f.ty;
-                quote! {#ty}
-            })
-            .chain(self.optional_generics())
-    }
-
     /// An iterator for fields of the builder.
     pub fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
         let iters = self
@@ -174,19 +140,6 @@ impl StructInput {
                 #ident: Option<#ty>
             }
         })
-    }
-
-    /// An iterator to express initialize statements.
-    fn struct_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        self.required_fields
-            .iter()
-            .chain(self.optional_fields.iter())
-            .map(|f| {
-                let ident = &f.ident;
-                quote! {
-                    #ident: self.#ident.unwrap()
-                }
-            })
     }
 
     /// An iterator to describe builder functions.

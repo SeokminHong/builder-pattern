@@ -12,6 +12,7 @@ use builder_pattern::Builder;
 ///     .name("John")
 ///     .age(42)
 ///     .build();
+///
 /// println!("{:?}", person);
 /// ```
 #[derive(Builder, Debug)]
