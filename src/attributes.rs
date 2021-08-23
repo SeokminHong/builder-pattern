@@ -47,11 +47,11 @@ impl From<Vec<Attribute>> for FieldAttributes {
 }
 
 fn parse_default(attr: &Attribute, attributes: &mut FieldAttributes) {
-    attributes.default = Some(attr.parse_args().unwrap());
+    attributes.default = attr.parse_args().ok();
 }
 
 fn parse_validator(attr: &Attribute, attributes: &mut FieldAttributes) {
-    attributes.validator = Some(attr.parse_args().unwrap());
+    attributes.validator = attr.parse_args().ok();
 }
 
 pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {

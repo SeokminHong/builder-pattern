@@ -57,7 +57,9 @@ impl Parse for StructInput {
             };
             fields.push(Field {
                 vis: f.vis,
-                ident: f.ident.unwrap(),
+                ident: f
+                    .ident
+                    .unwrap_or_else(|| unimplemented!("Fields must have an identifier!")),
                 ty: f.ty,
                 attrs,
             });

@@ -92,7 +92,11 @@ impl<'a> StructImpl<'a> {
             docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
             for f in self.input.optional_fields.iter() {
                 let ident = &f.ident;
-                let default = f.attrs.default.as_ref().unwrap();
+                let default = f
+                    .attrs
+                    .default
+                    .as_ref()
+                    .unwrap_or_else(|| unimplemented!("Invalid expression is provided!"));
 
                 let doc = format!(
                     " ### `{}`\n - Type: `{}`\n - Default: `{}`\n\n",
