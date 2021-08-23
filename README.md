@@ -91,6 +91,7 @@ Implement a validator for a field. `expr` could be a validating function that ta
 #[derive(Builder)]
 struct Test {
     #[validator(is_not_empty)]
+    #[into]
     pub name: String,
 }
 
