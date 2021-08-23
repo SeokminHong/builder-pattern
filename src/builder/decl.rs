@@ -1,4 +1,4 @@
-use crate::structure::StructInput;
+use crate::struct_input::StructInput;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;

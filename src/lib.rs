@@ -14,11 +14,11 @@ mod attributes;
 mod builder;
 mod documents;
 mod field;
-mod structure;
+mod struct_input;
 
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use structure::StructInput;
+use struct_input::StructInput;
 use syn::parse_macro_input;
 
 #[macro_use]

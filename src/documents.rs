@@ -1,5 +1,5 @@
 use crate::attributes::FieldAttributes;
-use crate::structure::StructInput;
+use crate::struct_input::StructInput;
 
 use syn::Attribute;
 
