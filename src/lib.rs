@@ -1,6 +1,7 @@
 //! # builder-pattern
 //!
 //! A derivable macro for declaring a builder pattern.
+//! This crate is highly inspired by [derive_builder](https://crates.io/crates/derive-builder).
 //!
 //! ## Features
 //!

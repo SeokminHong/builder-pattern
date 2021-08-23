@@ -332,3 +332,7 @@ impl<T3> PersonBuilder<String, i32, T3> {
     }
 }
 ```
+
+## License
+
+[MIT](./LICENSE)
