@@ -157,6 +157,7 @@ impl Test {
     }
 }
 
+/// A builder for `Test`.
 struct TestBuilder<T1, T2> {
     _phatom: PhantomData<(T1, T2)>,
     positive: Option<i32>,
@@ -164,7 +165,7 @@ struct TestBuilder<T1, T2> {
 }
 
 impl TestBuilder<i32, i32> {
-    fn build() -> Test {
+    fn build(self) -> Test {
         Test {
             positive: self.positive.unwrap(),
             zero: self.zero.unwrap(),

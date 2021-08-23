@@ -2,6 +2,7 @@ use crate::struct_input::StructInput;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
+use syn::parse_quote;
 
 /// Declaration of the builder structure.
 pub struct BuilderDecl<'a> {
@@ -16,6 +17,7 @@ impl<'a> BuilderDecl<'a> {
 
 impl<'a> ToTokens for BuilderDecl<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ident = &self.input.ident;
         let vis = &self.input.vis;
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
@@ -26,7 +28,11 @@ impl<'a> ToTokens for BuilderDecl<'a> {
 
         let builder_fields = self.input.builder_fields();
 
+        let docs = format!(" A builder for `{}`.", ident);
+        let docs: TokenStream = parse_quote!(#[doc=#docs]);
+
         tokens.extend(quote! {
+            #docs
             #vis struct #builder_name <#impl_tokens #(#all_generics),*> #where_clause {
                 _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
                 #(#builder_fields),*

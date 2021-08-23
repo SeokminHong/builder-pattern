@@ -1,4 +1,3 @@
-use quote::ToTokens;
 use syn::{Attribute, Expr};
 
 pub struct FieldAttributes {
@@ -54,10 +53,8 @@ pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
     for attr in attrs {
         if attr.path.is_ident("doc") {
             documents.push(attr.to_owned());
-            println!("{}", attr.to_token_stream());
         }
     }
-    println!();
 
     documents
 }
