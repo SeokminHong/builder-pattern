@@ -27,7 +27,7 @@ struct Person {
 let p1 = Person::new()          // PersonBuilder<(), (), ()>
     .name(String::from("Joe"))  // PersonBuilder<String, (), ()>
     .age(27)                    // PersonBuilder<String, i32, ()>
-    .build();
+    .build();                   // Person
 
 // Orders does not matter.
 let p2 = Person::new()          // PersonBuilder<(), (), ()>
