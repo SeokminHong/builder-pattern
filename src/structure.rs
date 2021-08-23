@@ -1,3 +1,5 @@
+use crate::attributes::get_documents;
+
 use super::attributes::FieldAttributes;
 use std::str::FromStr;
 
@@ -19,6 +21,7 @@ pub struct StructureInput {
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
+    pub documents: Vec<TokenStream>,
     pub required_fields: Vec<Field>,
     pub optional_fields: Vec<Field>,
 }
@@ -26,19 +29,26 @@ pub struct StructureInput {
 impl Parse for StructureInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let input: DeriveInput = input.parse()?;
+        // Visibility of the sturcture.
         let vis = input.vis;
+        // Name of the structure.
         let ident = input.ident;
+        // Generics of the structure.
         let generics = input.generics;
-        let data_struct = if let Data::Struct(d) = input.data {
-            d
+        // Documents of the structure.
+        let documents = get_documents(&input.attrs);
+
+        // Fields of the structure.
+        let fields = if let Data::Struct(d) = input.data {
+            if let Fields::Named(f) = d.fields {
+                f
+            } else {
+                unimplemented!("Only named structures are supported!");
+            }
         } else {
             unimplemented!("Only structures are supported!");
         };
-        let fields = if let Fields::Named(f) = data_struct.fields {
-            f
-        } else {
-            unimplemented!("Only structures are supported!");
-        };
+
         let mut optional_fields: Vec<Field> = vec![];
         let mut required_fields: Vec<Field> = vec![];
         for f in fields.named.into_iter() {
@@ -59,6 +69,7 @@ impl Parse for StructureInput {
             vis,
             ident,
             generics,
+            documents,
             required_fields,
             optional_fields,
         })
@@ -69,6 +80,8 @@ impl ToTokens for StructureInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
         let vis = &self.vis;
+        // TODO
+        let _documents = &self.documents;
 
         // Parse generic parameters.
         let impl_tokens = self.tokenize_impl();
