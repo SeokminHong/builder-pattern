@@ -1,5 +1,5 @@
 use crate::attributes::FieldAttributes;
-use crate::builder::decl::BuilderDecl;
+use crate::builder::{builder_decl::BuilderDecl, builder_impl::BuilderImpl};
 use crate::field::Field;
 
 use std::str::FromStr;
@@ -40,8 +40,8 @@ impl Parse for StructInput {
             unimplemented!("Only structures are supported!");
         };
 
-        let mut optional_fields: Vec<Field> = vec![];
-        let mut required_fields: Vec<Field> = vec![];
+        let mut optional_fields: Vec<Field> = Vec::new();
+        let mut required_fields: Vec<Field> = Vec::new();
         for f in fields.named.into_iter() {
             let attrs: FieldAttributes = f.attrs.into();
             let fields = if attrs.default.is_some() {
@@ -76,6 +76,10 @@ impl ToTokens for StructInput {
         let builder_decl = BuilderDecl::new(self);
         builder_decl.to_tokens(tokens);
 
+        // Implement builder structure for `build` function.
+        let builder_impl = BuilderImpl::new(self);
+        builder_impl.to_tokens(tokens);
+
         let ident = &self.ident;
         let vis = &self.vis;
 
@@ -84,34 +88,18 @@ impl ToTokens for StructInput {
         let ty_tokens = self.tokenize_types();
 
         let where_clause = &self.generics.where_clause;
-        let lifetimes = self
-            .generics
-            .lifetimes()
-            // Remove bounds
-            .map(|f| f.lifetime.to_token_stream())
-            .collect::<Vec<TokenStream>>();
+        let lifetimes = self.lifetimes();
 
         let builder_name = Ident::new(&format!("{}Builder", self.ident), Span::call_site());
 
-        let empty_generics = self.empty_generics();
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
-
-        let builder_init_args = self.builder_init_args();
 
         let struct_init_args = self.struct_init_args();
 
         let builder_functions = self.builder_functions(&builder_name, &lifetimes, &ty_tokens);
 
         tokens.extend(quote! {
-            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
-                #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
-                    #builder_name {
-                        _phantom: ::std::marker::PhantomData,
-                        #(#builder_init_args),*
-                    }
-                }
-            }
             impl <#impl_tokens #(#optional_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#satisfied_generics),*>
                 #where_clause
             {
@@ -132,18 +120,20 @@ impl StructInput {
         Ident::new(&format!("{}Builder", self.ident), Span::call_site())
     }
 
+    /// Get token stream for lifetimes.
+    pub fn lifetimes(&self) -> Vec<TokenStream> {
+        self.generics
+            .lifetimes()
+            // Remove bounds
+            .map(|f| f.lifetime.to_token_stream())
+            .collect::<Vec<TokenStream>>()
+    }
+
     /// An iterator for generics like [U1, U2, ...].
     pub fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.required_fields.len() + self.optional_fields.len()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
-    }
-
-    /// An iterator to describe initial state of builder.
-    fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
-        (0..(self.required_fields.len() + self.optional_fields.len()))
-            .into_iter()
-            .map(|_| TokenStream::from_str("()").unwrap())
     }
 
     /// An iterator for optional fields.
@@ -177,25 +167,6 @@ impl StructInput {
                 #ident: Option<#ty>
             }
         })
-    }
-
-    /// An iterator for initialize arguments of the builder.
-    /// Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
-    fn builder_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        self.required_fields
-            .iter()
-            .map(|f| {
-                let ident = &f.ident;
-                quote! {
-                    #ident: None
-                }
-            })
-            .chain(self.optional_fields.iter().map(|f| {
-                let (ident, expr) = (&f.ident, &f.attrs.default.as_ref());
-                quote_spanned! { expr.span() =>
-                    #ident: Some(#expr)
-                }
-            }))
     }
 
     /// An iterator to express initialize statements.
