@@ -39,7 +39,10 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 attributes.documents = get_documents(&attrs);
             }
         });
-        attributes
+        match attributes.validate() {
+            Ok(_) => attributes,
+            Err(e) => unimplemented!("{}", e),
+        }
     }
 }
 
@@ -61,4 +64,16 @@ pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
     }
 
     documents
+}
+
+impl FieldAttributes {
+    fn validate(&self) -> Result<(), String> {
+        if self.hidden && self.default.is_none() {
+            Err(String::from(
+                "`hidden` attribute requires `default` attribute.",
+            ))
+        } else {
+            Ok(())
+        }
+    }
 }
