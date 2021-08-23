@@ -11,6 +11,8 @@
 //! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
 
 mod attributes;
+mod documents;
+mod field;
 mod structure;
 
 use proc_macro::TokenStream;

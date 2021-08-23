@@ -1,11 +1,11 @@
-use proc_macro2::TokenStream;
+use quote::ToTokens;
 use syn::{Attribute, Expr};
 
 pub struct FieldAttributes {
     pub default: Option<Expr>,
     pub use_into: bool,
     pub validator: Option<Expr>,
-    pub documents: Vec<TokenStream>,
+    pub documents: Vec<Attribute>,
 }
 
 impl Default for FieldAttributes {
@@ -48,13 +48,13 @@ fn parse_validator(attr: &Attribute, attributes: &mut FieldAttributes) {
     attributes.validator = Some(attr.parse_args().unwrap());
 }
 
-pub fn get_documents(attrs: &[Attribute]) -> Vec<TokenStream> {
-    let mut documents: Vec<TokenStream> = vec![];
+pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
+    let mut documents: Vec<Attribute> = vec![];
 
     for attr in attrs {
         if attr.path.is_ident("doc") {
-            println!("'{}'", attr.tokens);
-            documents.push(attr.tokens.to_owned());
+            documents.push(attr.to_owned());
+            println!("{}", attr.to_token_stream());
         }
     }
     println!();

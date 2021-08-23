@@ -1,6 +1,7 @@
-use crate::attributes::get_documents;
+use crate::attributes::FieldAttributes;
+use crate::documents::DocumentsGenerator;
+use crate::field::Field;
 
-use super::attributes::FieldAttributes;
 use std::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -8,20 +9,13 @@ use quote::ToTokens;
 use quote::TokenStreamExt;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{AttrStyle, Data, DeriveInput, Fields, GenericParam, Generics, Token, Type, Visibility};
+use syn::{AttrStyle, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility};
 
-pub struct Field {
-    pub vis: Visibility,
-    pub ident: Ident,
-    pub ty: Type,
-    pub attrs: FieldAttributes,
-}
 
 pub struct StructureInput {
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
-    pub documents: Vec<TokenStream>,
     pub required_fields: Vec<Field>,
     pub optional_fields: Vec<Field>,
 }
@@ -35,8 +29,6 @@ impl Parse for StructureInput {
         let ident = input.ident;
         // Generics of the structure.
         let generics = input.generics;
-        // Documents of the structure.
-        let documents = get_documents(&input.attrs);
 
         // Fields of the structure.
         let fields = if let Data::Struct(d) = input.data {
@@ -65,11 +57,14 @@ impl Parse for StructureInput {
                 attrs,
             });
         }
+        // Sort by ident.
+        optional_fields.sort();
+        required_fields.sort();
+
         Ok(StructureInput {
             vis,
             ident,
             generics,
-            documents,
             required_fields,
             optional_fields,
         })
@@ -80,8 +75,7 @@ impl ToTokens for StructureInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
         let vis = &self.vis;
-        // TODO
-        let _documents = &self.documents;
+        let documents = self.generate_documents();
 
         // Parse generic parameters.
         let impl_tokens = self.tokenize_impl();
@@ -110,6 +104,7 @@ impl ToTokens for StructureInput {
         let builder_functions = self.builder_functions(&builder_name, &lifetimes, &ty_tokens);
 
         tokens.extend(quote! {
+            #(#documents)*
             #vis struct #builder_name <#impl_tokens #(#all_generics),*> #where_clause {
                 _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
                 #(#builder_fields),*
