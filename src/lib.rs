@@ -130,7 +130,7 @@ extern crate proc_macro2;
 /// let test2 = Test::new()         // TestBuilder<(), ()>
 ///     .name(String::from("Jack")) // TestBuilder<String, ()>
 ///     // Error: `id` function is not generated.
-///     .id(Uuid::from(String::from("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e")))
+///     .id(Uuid::parse_str("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e").unwrap())
 ///     .build();
 /// ```
 ///
@@ -178,7 +178,6 @@ extern crate proc_macro2;
 /// }
 ///
 /// let test1 = Test::new()         // TestBuilder<()>
-///     // `&str` is implicitly converted into `String`.
 ///     .name("Hello")              // Ok(TestBuilder<String>)
 ///     .unwrap()                   // TestBuilder<String>
 ///     .build();                   // Test
@@ -201,7 +200,7 @@ extern crate proc_macro2;
 /// # }
 /// #
 /// let test2 = Test::new()         // TestBuilder<()>
-///     .name("")                   // Err(String{ "Validation failed: \"Name cannot be empty.\"" })
+///     .name("")                   // Err(String{ "Validation failed: Name cannot be empty." })
 ///     .unwrap()                   // panic!
 ///     .build();
 /// ```
@@ -370,7 +369,7 @@ extern crate proc_macro2;
 /// impl<T2, T3> PersonBuilder<(), T2, T3> {
 ///     // Receives `Into` traits.
 ///     fn name<IntoType: Into<String>>(self, value: IntoType) ->
-///         Result<PersonBuilder<String, T2, T3>, ()> {
+///         Result<PersonBuilder<String, T2, T3>, String> {
 ///         // Validation check.
 ///         match is_not_empty(value.into()) {
 ///             Ok(value) => Ok(PersonBuilder {
@@ -380,7 +379,7 @@ extern crate proc_macro2;
 ///                 gender: self.gender,
 ///                 _phantom: PhantomData,
 ///             }),
-///             Err(_) => Err(())
+///             Err(e) => Err(format!("Validation failed: {:?}", e))
 ///         }
 ///     }
 /// }

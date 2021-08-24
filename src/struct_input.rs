@@ -1,14 +1,14 @@
 use crate::attributes::FieldAttributes;
-use crate::builder::functions::BuilderFunctions;
-use crate::builder::{builder_decl::BuilderDecl, builder_impl::BuilderImpl};
+use crate::builder::{
+    builder_decl::BuilderDecl, builder_impl::BuilderImpl, functions::BuilderFunctions,
+};
 use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
 use std::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::ToTokens;
-use quote::TokenStreamExt;
+use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility,

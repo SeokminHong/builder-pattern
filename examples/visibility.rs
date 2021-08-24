@@ -29,28 +29,21 @@ mod vis_mod {
         c: MyEnum,
     }
 
-    #[cfg(test)]
-    mod test {
-        use super::*;
-        use std::borrow::Cow;
+    pub fn private_test() {
+        let a = PrivateTest::<i32, String>::new()
+            .a(5)
+            .b(Cow::Owned(String::from("Hello")))
+            .c(&&3)
+            .build();
 
-        #[test]
-        fn private_test() {
-            let a = PrivateTest::<i32, String>::new()
-                .a(5)
-                .b(Cow::Owned(String::from("Hello")))
-                .c(&&3)
-                .build();
+        let b = PrivateTest::<i32, String>::new()
+            .c(&&4)
+            .b(Cow::Owned(String::from("foo")))
+            .a(3)
+            .build();
 
-            let b = PrivateTest::<i32, String>::new()
-                .c(&&4)
-                .b(Cow::Owned(String::from("foo")))
-                .a(3)
-                .build();
-
-            println!("{:?}", a);
-            println!("{:?}", b);
-        }
+        println!("{:?}", a);
+        println!("{:?}", b);
     }
 }
 
@@ -63,4 +56,6 @@ pub fn main() {
         .b(Some(123))
         .build();
     println!("{:?}", t1);
+
+    vis_mod::private_test();
 }
