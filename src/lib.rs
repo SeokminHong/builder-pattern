@@ -6,7 +6,7 @@
 //! ## Features
 //!
 //! - **Chaining**: Can make structure with chained setters.
-//! - **Complex types are supported**: Lifetime and trait bounds, and where clauses are well supported.
+//! - **Complex types are supported**: Lifetime, trait bounds, and where clauses are well supported.
 //! - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build`
 //! function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
 //! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
@@ -55,7 +55,7 @@ extern crate proc_macro2;
 ///     .age(27)                    // PersonBuilder<String, i32, ()>
 ///     .build();                   // Person
 ///     
-/// // Orders does not matter.
+/// // Order does not matter.
 /// let p2 = Person::new()          // PersonBuilder<(), (), ()>
 ///     .age(32)                    // PersonBuilder<(), i32, ()>
 ///     // `&str` is implicitly converted into `String`
@@ -91,7 +91,7 @@ extern crate proc_macro2;
 ///
 /// ### `#[default(expr)]`
 ///
-/// A field having this attribute will be considered as optional and the `expr` will be evaluated
+/// A field having this attribute will be considered as optional, and the `expr` will be evaluated
 /// as a default value of the field. `build` function can be called without providing this field.
 ///
 ///
@@ -136,7 +136,7 @@ extern crate proc_macro2;
 ///
 /// ### `#[into]`
 ///
-/// A setter function for a field having this attribute will accept an `Into` trait as a parameter.
+/// A setter function for a field having this attribute will accept `Into` trait as a parameter.
 /// You can use this setter with implicit conversion.
 ///
 /// Example:
@@ -207,7 +207,7 @@ extern crate proc_macro2;
 ///
 /// ## Auto-Generated Documentions
 ///
-/// This crate generates documentations for the builder functions. If you documentate the fields,
+/// This crate generates documentation for the builder functions. If you document fields,
 /// the builder functions for them also copy the documentations.
 ///
 /// ### Example
@@ -221,7 +221,7 @@ extern crate proc_macro2;
 ///     /// A positive integer.
 ///     pub positive: i32,
 ///
-///     /// A integer having zero as a default value.
+///     /// An integer having zero as a default value.
 ///     #[default(0)]
 ///     pub zero: i32,
 /// }
@@ -248,7 +248,7 @@ extern crate proc_macro2;
 ///     /// - Type: `i32`
 ///     /// - Default: `0`
 ///     ///
-///     /// A integer having zero as a default value.
+///     /// An integer having zero as a default value.
 ///     fn new() -> TestBuilder<(), ()> {
 ///         TestBuilder {
 ///             _phatom: PhantomData,
@@ -293,7 +293,7 @@ extern crate proc_macro2;
 ///     /// - Type: `i32`
 ///     /// - Default: `0`
 ///     ///
-///     /// A integer having zero as a default value.
+///     /// An integer having zero as a default value.
 ///     pub fn zero(self, value: i32) -> TestBuilder<T1, i32> {
 ///         TestBuilder {
 ///             _phatom: PhantomData,
