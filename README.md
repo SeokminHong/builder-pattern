@@ -60,7 +60,7 @@ builder-pattern = "0.3"
 - **Complex types are supported**: Lifetime, trait bounds, and where clauses are well supported.
 - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build` function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
 - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
-- **Auto-generated documentations**: Documentations for the builder functions are automatically generated.
+- **Auto-generated documentation**: Documentation for the builder functions are automatically generated.
 
 ## Attributes
 
@@ -144,10 +144,10 @@ let test2 = Test::new()         // TestBuilder<()>
     .build();
 ```
 
-## Auto-Generated Documentions
+## Auto-Generated Documentation
 
 This crate generates documentation for the builder functions. If you document fields,
-the builder functions for them also copy the documentations.
+the builder functions for them also copy the documentation.
 
 ### Example
 
