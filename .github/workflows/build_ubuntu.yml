@@ -47,7 +47,7 @@ jobs:
 
       - name: Run check
         run: |
-          cd examples
+          cd builder-pattern/examples
           cargo check --all-targets
 
   # Only test docs for Ubuntu.

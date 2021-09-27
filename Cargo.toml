@@ -1,26 +1,2 @@
-[package]
-name = "builder-pattern"
-version = "0.3.11"
-edition = "2018"
-authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
-license = "MIT"
-description = "A derivable macro for declaring a builder pattern."
-repository = "https://github.com/SeokminHong/builder-pattern"
-homepage = "https://github.com/SeokminHong/builder-pattern"
-documentation = "https://docs.rs/builder-pattern"
-categories = ["development-tools", "rust-patterns"]
-keywords = ["builder", "pattern", "macro", "derive", "struct"]
-readme = "README.md"
-
-[dependencies]
-futures = "0.3"
-proc-macro2 = "1.0"
-syn = { version = "1.0", features = ["full"] }
-quote = "1.0"
-
-[dev-dependencies]
-uuid = { version = "0.8", features = ["v4"] }
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
-
-[lib]
-proc-macro = true
+[workspace]
+members = ["builder-pattern-macro", "builder-pattern"]
