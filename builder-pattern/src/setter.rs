@@ -1,5 +1,5 @@
 #[cfg(feature = "future")]
-use futures::{future::LocalBoxFuture, Future};
+use futures::future::LocalBoxFuture;
 
 pub enum Setter<'a, T> {
     Value(T),

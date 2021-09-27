@@ -1,26 +1,17 @@
-use futures::{future::LocalBoxFuture, Future};
-use std::{marker::PhantomData, panic};
+use builder_pattern::Builder;
 
-enum Setter<'a, T> {
-    Value(T),
-    Lazy(Box<dyn 'a + Fn() -> T>),
-    Async(Box<dyn 'a + Fn() -> LocalBoxFuture<'a, T>>),
-}
-
-struct AsyncBuilder {}
-
-#[derive(Debug)]
+#[derive(Builder, Debug)]
 struct Person {
-    // #[setter(value, lazy, async)]
+    #[setter(value, lazy, async)]
     name: String,
     age: u8,
     // Default value is lazy evaluated.
     // Only lazy setter is provided.
     // #[default_lazy(|| "Hello")]
-    // #[setter(lazy)]
+    #[setter(lazy)]
     address: &'static str,
 }
-
+/*
 struct PersonBuilder<'a, AsyncField, T1, T2, T3> {
     name: Option<Setter<'a, String>>,
     age: Option<Setter<'a, u8>>,
@@ -143,6 +134,7 @@ impl<'a, T3> PersonBuilder<'a, AsyncBuilder, String, u8, T3> {
         }
     }
 }
+*/
 
 fn test_city() -> &'static str {
     "Tokyo"
@@ -150,6 +142,7 @@ fn test_city() -> &'static str {
 
 #[tokio::main]
 async fn main() {
+    /*
     // `name` is evaluated here
     let a_builder = Person::new().name(String::from("Jack")).age(30);
     let a = a_builder.build(); // `address` is evaluated here
@@ -171,4 +164,5 @@ async fn main() {
         .address_lazy(test_city);
     let c = c_builder.build().await; // `name` and `address` is evaluated here
     println!("{:?}", c);
+    */
 }
