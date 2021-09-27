@@ -3,7 +3,7 @@ use std::{marker::PhantomData, panic};
 
 enum Setter<'a, T> {
     Value(T),
-    Lazy(fn() -> T),
+    Lazy(Box<dyn 'a + Fn() -> T>),
     Async(Box<dyn 'a + Fn() -> LocalBoxFuture<'a, T>>),
 }
 
@@ -34,7 +34,7 @@ impl Person {
         PersonBuilder {
             name: None,
             age: None,
-            address: Some(Setter::Lazy(|| "Seoul")),
+            address: Some(Setter::Lazy(Box::new(|| "Seoul"))),
             _phantom: PhantomData,
         }
     }
@@ -49,9 +49,12 @@ impl<'a, AsyncField, T2, T3> PersonBuilder<'a, AsyncField, (), T2, T3> {
             _phantom: PhantomData,
         }
     }
-    pub fn name_lazy(self, value: fn() -> String) -> PersonBuilder<'a, AsyncField, String, T2, T3> {
+    pub fn name_lazy<ValType: 'a + Fn() -> String>(
+        self,
+        value: ValType,
+    ) -> PersonBuilder<'a, AsyncField, String, T2, T3> {
         PersonBuilder {
-            name: Some(Setter::Lazy(value)),
+            name: Some(Setter::Lazy(Box::new(value))),
             age: self.age,
             address: self.address,
             _phantom: PhantomData,
@@ -60,13 +63,13 @@ impl<'a, AsyncField, T2, T3> PersonBuilder<'a, AsyncField, (), T2, T3> {
 }
 
 impl<'a, AsyncField, T2, T3> PersonBuilder<'a, AsyncField, (), T2, T3> {
-    pub fn name_async<ReturnType>(
+    pub fn name_async<
+        ReturnType: 'a + Future<Output = String>,
+        ValType: 'a + Fn() -> ReturnType,
+    >(
         self,
-        value: fn() -> ReturnType,
-    ) -> PersonBuilder<'a, AsyncBuilder, String, T2, T3>
-    where
-        ReturnType: Future<Output = String> + 'a,
-    {
+        value: ValType,
+    ) -> PersonBuilder<'a, AsyncBuilder, String, T2, T3> {
         PersonBuilder {
             name: Some(Setter::Async(Box::new(move || Box::pin(value())))),
             age: self.age,
@@ -88,14 +91,14 @@ impl<'a, AsyncField, T1, T3> PersonBuilder<'a, AsyncField, T1, (), T3> {
 }
 
 impl<'a, AsyncField, T1, T2> PersonBuilder<'a, AsyncField, T1, T2, ()> {
-    pub fn address_lazy(
+    pub fn address_lazy<ValType: 'a + Fn() -> &'static str>(
         self,
-        value: fn() -> &'static str,
+        value: ValType,
     ) -> PersonBuilder<'a, AsyncField, T1, T2, &'static str> {
         PersonBuilder {
             name: self.name,
             age: self.age,
-            address: Some(Setter::Lazy(value)),
+            address: Some(Setter::Lazy(Box::new(value))),
             _phantom: PhantomData,
         }
     }
@@ -148,9 +151,10 @@ async fn main() {
     let a = a_builder.build(); // `address` is evaluated here
     println!("{:?}", a);
 
+    let b_surname = "Johanson";
     // Lazy builder
     let b_builder = Person::new()
-        .name_lazy(|| String::from("Jane"))
+        .name_lazy(move || format!("Jane {}", b_surname))
         .age(50)
         .address_lazy(|| "New York");
     let b = b_builder.build(); // `name` and `address` is evaluated here
