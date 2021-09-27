@@ -13,12 +13,14 @@ keywords = ["builder", "pattern", "macro", "derive", "struct"]
 readme = "README.md"
 
 [dependencies]
+futures = "0.3"
 proc-macro2 = "1.0"
 syn = { version = "1.0", features = ["full"] }
 quote = "1.0"
 
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
+tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 
 [lib]
 proc-macro = true
