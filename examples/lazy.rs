@@ -144,6 +144,10 @@ impl<'a, T3> PersonBuilder<'a, AsyncBuilder, String, u8, T3> {
     }
 }
 
+fn test_city() -> &'static str {
+    "Tokyo"
+}
+
 #[tokio::main]
 async fn main() {
     // `name` is evaluated here
@@ -164,7 +168,7 @@ async fn main() {
     let c_builder = Person::new()
         .name_async(|| async { String::from("Joe") })
         .age(17)
-        .address_lazy(|| "Tokyo");
+        .address_lazy(test_city);
     let c = c_builder.build().await; // `name` and `address` is evaluated here
     println!("{:?}", c);
 }
