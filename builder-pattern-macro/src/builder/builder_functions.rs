@@ -17,6 +17,8 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
 
+        let fn_lifetime = self.input.fn_lifetime();
+
         let impl_tokens = self.input.tokenize_impl();
         let ty_tokens = self.input.tokenize_types();
 
@@ -49,7 +51,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 let mut after_generics = all_generics.clone();
                 after_generics[index] = quote! {#ty};
                 let mut builder_fields = all_builder_fields.clone();
-                builder_fields[index] = quote! {#ident: Some(value.into())};
+                builder_fields[index] = quote! {#ident: Some(::builder_pattern::setter::Setter::Value(value.into()))};
                 index += 1;
 
                 let (arg_type_gen, arg_type) =
@@ -66,7 +68,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 };
                 let (ret_type, ret_expr) = match &f.attrs.validator {
                     Some(v) => (quote! {
-                        ::std::result::Result<#builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>, String>
+                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>, String>
                     }, quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
                         match #v (value.into()) {
@@ -75,14 +77,14 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                         }
                     }),
                     None => (quote! {
-                        #builder_name <#(#lifetimes,)* #ty_tokens #(#after_generics),*>
+                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
                     }, ret_expr)
                 };
 
                 let documents = BuilderFunctions::documents(f);
 
                 tokens.extend(quote! {
-                    impl <#impl_tokens #(#other_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#before_generics),*>
+                    impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker>
                         #where_clause
                     {
                         #(#documents)*

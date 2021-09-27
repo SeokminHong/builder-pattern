@@ -23,13 +23,15 @@ impl<'a> ToTokens for StructImpl<'a> {
         let empty_generics = self.empty_generics();
         let ty_tokens = self.input.tokenize_types();
 
+        let fn_lifetime = self.input.fn_lifetime();
+
         let builder_init_args = self.builder_init_args();
         let docs = self.documents();
 
         tokens.extend(quote! {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #(#docs)*
-                #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
+                #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, ()> {
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
                         #(#builder_init_args),*
@@ -67,7 +69,7 @@ impl<'a> StructImpl<'a> {
             .chain(self.input.optional_fields.iter().map(|f| {
                 let (ident, expr) = (&f.ident, &f.attrs.default.as_ref());
                 quote_spanned! { expr.span() =>
-                    #ident: Some(#expr)
+                    #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
                 }
             }))
     }

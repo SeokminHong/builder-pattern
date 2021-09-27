@@ -1,6 +1,6 @@
 use crate::attributes::FieldAttributes;
 use crate::builder::{
-    builder_decl::BuilderDecl, builder_impl::BuilderImpl, functions::BuilderFunctions,
+    builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
 use crate::field::Field;
 use crate::struct_impl::StructImpl;
@@ -11,7 +11,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{
-    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility,
+    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
+    Visibility,
 };
 
 pub struct StructInput {
@@ -104,6 +105,10 @@ impl StructInput {
         Ident::new(&format!("{}Builder", self.ident), Span::call_site())
     }
 
+    pub fn fn_lifetime(&self) -> Lifetime {
+        Lifetime::new("'fn_lifetime", Span::call_site())
+    }
+
     /// Get token stream for lifetimes.
     pub fn lifetimes(&self) -> Vec<TokenStream> {
         self.generics
@@ -121,15 +126,18 @@ impl StructInput {
     }
 
     /// An iterator for fields of the builder.
-    pub fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
+    pub fn builder_fields<'a>(
+        &'a self,
+        fn_lifetime: &'a Lifetime,
+    ) -> impl 'a + Iterator<Item = TokenStream> {
         let iters = self
             .required_fields
             .iter()
             .chain(self.optional_fields.iter());
-        iters.map(|f| {
+        iters.map(move |f| {
             let (ident, ty) = (&f.ident, &f.ty);
             quote! {
-                #ident: Option<#ty>
+                #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
             }
         })
     }

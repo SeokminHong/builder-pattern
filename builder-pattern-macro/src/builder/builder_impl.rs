@@ -16,6 +16,8 @@ impl<'a> ToTokens for BuilderImpl<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
 
+        let fn_lifetime = self.input.fn_lifetime();
+
         let impl_tokens = self.input.tokenize_impl();
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
@@ -23,7 +25,7 @@ impl<'a> ToTokens for BuilderImpl<'a> {
         let struct_init_args = self.struct_init_args();
 
         tokens.extend(quote! {
-            impl <#impl_tokens #(#optional_generics,)*> #builder_name <#(#lifetimes,)* #ty_tokens #(#satisfied_generics),*>
+            impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
             #where_clause
             {
                 #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
@@ -72,7 +74,11 @@ impl<'a> BuilderImpl<'a> {
             .map(|f| {
                 let ident = &f.ident;
                 quote! {
-                    #ident: self.#ident.unwrap()
+                    #ident: match self.#ident.unwrap() {
+                        ::builder_pattern::setter::Setter::Value(v) => v,
+                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                        _ => panic!("unreachable"),
+                    }
                 }
             })
     }
