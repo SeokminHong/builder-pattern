@@ -158,6 +158,7 @@ impl<'a> BuilderFunctions<'a> {
             }
         });
     }
+    #[allow(dead_code)]
     fn write_lazy_setter(
         &self,
         tokens: &mut TokenStream,
