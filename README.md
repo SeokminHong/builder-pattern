@@ -51,7 +51,7 @@ Add `builder-pattern` to `Cargo.toml`.
 ```toml
 # Cargo.toml
 [dependencies]
-builder-pattern = "0.3"
+builder-pattern = "0.4"
 ```
 
 ## Features
@@ -59,6 +59,7 @@ builder-pattern = "0.3"
 - **Chaining**: Can make structure with chained setters.
 - **Complex types are supported**: Lifetime, trait bounds, and where clauses are well supported.
 - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build` function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
+- **Lazy evaluation and asynchronous**: Lazy evaluation and asynchronous are supported. The values will be evaluated when the structure is built.
 - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
 - **Auto-generated documentation**: Documentation for the builder functions are automatically generated.
 
@@ -68,9 +69,38 @@ builder-pattern = "0.3"
 
 A field having this attribute will be considered as optional, and the `expr` will be evaluated as a default value of the field. `build` function can be called without providing this field.
 
+```rust
+#[derive(Builder)]
+struct Test {
+    #[default]
+    pub a: i32,
+    pub b: &'static str,
+}
+
+let t1 = Test::new().b("Hello").build(); // The structure can be built without `a`.
+let t2 = Test::new().b("Hi").a(3).build();
+```
+
+### `#[default_lazy(expr)]`
+
+A field having this attribute will be considered as optional, and the `expr` will be lazily evaluated as a default value of the field. `expr` should be a function or a closure having no arguments.
+
+```rust
+#[derive(Builder)]
+struct Test {
+    #[default_lazy(|| some_heavy_task() + 3)]
+    pub a: i32,
+    #[default_lazy(some_heavy_task)]
+    pub b: &'static str,
+}
+
+let t1 = Test::new().build(); // The structure can be built without `a` and `b`.
+let t2 = Test::new().a(3).build();
+```
+
 ### `#[hidden]`
 
-If this attribute is present, the builder function would not be generated for the field. This field requires `default` attribute.
+If this attribute is present, the builder function would not be generated for the field. This field requires `default` or `default_lazy` attribute.
 
 Example:
 
@@ -94,9 +124,27 @@ let test2 = Test::new()         // TestBuilder<(), ()>
     .build();
 ```
 
+### `#[setter(value | lazy | async)]`
+
+If this attribute presents, it provides specified setters. If it doesn't, only the value setter is provided.
+
+```rust
+#[derive(Builder, Debug)]
+struct Person {
+    // All kinds of setters are provided.
+    #[setter(value, lazy, async)]
+    name: String,
+    // Only value setter is provided.
+    age: u8,
+    // Only lazy setter is provided.
+    #[setter(lazy)]
+    address: &'static str,
+}
+```
+
 ### `#[into]`
 
-A setter function for a field having this attribute will accept `Into` trait as a parameter. You can use this setter with implicit conversion.
+A setter function for a field having this attribute will accept `Into` trait as a parameter. You can use this setter with implicit conversion. Currently, it cannot be used with async or lazy setters.
 
 Example:
 
@@ -142,6 +190,35 @@ let test2 = Test::new()         // TestBuilder<()>
     .name("")                   // Err(String{ "Validation failed: Name cannot be empty." })
     .unwrap()                   // panic!
     .build();
+```
+
+If the validator is used with lazy or async setters, the value also evaluated lazily or asynchronously. So, the build result would be `Result`.
+
+```rust
+
+#[derive(Builder)]
+struct Test {
+    #[validator(is_not_empty)]
+    #[setter(value, lazy, async)]
+    pub name: &'static str,
+}
+
+fn is_not_empty(name: String) -> Result<String, &'static str> {
+    if name.is_empty() {
+        Err("Name cannot be empty.")
+    } else {
+        Ok(name)
+    }
+}
+
+let test1 = Test::new()         // TestBuilder<()>
+    .name("Hello")              // Ok(TestBuilder<&'static str>)
+    .unwrap()                   // TestBuilder<&'static str>
+    .build();                   // Test
+
+let test2 = Test::new()         // TestBuilder<()>
+    .name_lazy("")              // TestBuilder<&'static str>
+    .build();                   // Result<Test, &'static str>
 ```
 
 ## Auto-Generated Documentation
