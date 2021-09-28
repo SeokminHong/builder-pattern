@@ -1,4 +1,4 @@
-use crate::attributes::FieldAttributes;
+use crate::attributes::{FieldAttributes, Setters};
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -130,16 +130,21 @@ impl StructInput {
         &'a self,
         fn_lifetime: &'a Lifetime,
     ) -> impl 'a + Iterator<Item = TokenStream> {
-        let iters = self
-            .required_fields
+        self.required_fields
             .iter()
-            .chain(self.optional_fields.iter());
-        iters.map(move |f| {
-            let (ident, ty) = (&f.ident, &f.ty);
-            quote! {
-                #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
-            }
-        })
+            .chain(self.optional_fields.iter())
+            .map(move |f| {
+                let (ident, ty) = (&f.ident, &f.ty);
+                if !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty() && f.attrs.validator.is_some() {
+                    quote! {
+                        #ident: Option<::builder_pattern::setter::ValidatedSetter<#fn_lifetime, #ty>>
+                    }
+                } else {
+                    quote! {
+                        #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
+                    }
+                }
+            })
     }
 
     /// Tokenize type parameters.

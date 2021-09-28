@@ -1,18 +1,18 @@
 use builder_pattern::setter::*;
-// use builder_pattern::Builder;
+use builder_pattern::Builder;
 use std::future::Future;
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+#[derive(Builder, Debug)]
 struct Person {
-    // #[setter(value, lazy, async)]
+    #[setter(value, lazy, async)]
     name: String,
     age: u8,
     // Default value is lazy evaluated.
     // Only lazy setter is provided.
     // #[default_lazy(|| "Seoul")]
-    // #[setter(lazy)]
-    // #[validator(is_not_empty)]
+    #[setter(lazy)]
+    #[validator(is_not_empty)]
     address: &'static str,
 }
 
@@ -24,10 +24,11 @@ fn is_not_empty(name: &'static str) -> Result<&'static str, &'static str> {
     }
 }
 
+/*
 struct PersonBuilder<'a, AsyncField, T1, T2, T3> {
     name: Option<Setter<'a, String>>,
     age: Option<Setter<'a, u8>>,
-    address: Option<Setter<'a, Result<&'static str, &'static str>>>,
+    address: Option<ValidatedSetter<'a, &'static str>>,
     _phantom: PhantomData<(AsyncField, T1, T2, T3)>,
 }
 
@@ -38,7 +39,9 @@ impl Person {
         PersonBuilder {
             name: None,
             age: None,
-            address: Some(Setter::Lazy(Box::new(|| is_not_empty((|| "Seoul")())))),
+            address: Some(ValidatedSetter::Lazy(Box::new(|| {
+                is_not_empty((|| "Seoul")())
+            }))),
             _phantom: PhantomData,
         }
     }
@@ -102,7 +105,9 @@ impl<'a, AsyncField, T1, T2> PersonBuilder<'a, AsyncField, T1, T2, ()> {
         PersonBuilder {
             name: self.name,
             age: self.age,
-            address: Some(Setter::Lazy(Box::new(move || is_not_empty(value())))),
+            address: Some(ValidatedSetter::Lazy(Box::new(move || {
+                is_not_empty(value())
+            }))),
             _phantom: PhantomData,
         }
     }
@@ -112,7 +117,8 @@ impl<'a, T3> PersonBuilder<'a, (), String, u8, T3> {
     // If the struct needs lazy validation, it should return `Result`.
     pub fn build(self) -> Result<Person, &'static str> {
         let address = match match self.address.unwrap() {
-            Setter::Lazy(f) => f(),
+            ValidatedSetter::Lazy(f) => f(),
+            ValidatedSetter::Value(v) => Ok(v),
             _ => unreachable!(),
         } {
             Ok(address) => address,
@@ -136,10 +142,11 @@ impl<'a, T3> PersonBuilder<'a, (), String, u8, T3> {
 impl<'a, T3> PersonBuilder<'a, AsyncBuilderMarker, String, u8, T3> {
     pub async fn build(self) -> Result<Person, &'static str> {
         let address = match match self.address.unwrap() {
-            Setter::Lazy(f) => f(),
-            _ => unreachable!(),
+            ValidatedSetter::Async(f) => f().await,
+            ValidatedSetter::Lazy(f) => f(),
+            ValidatedSetter::Value(v) => Ok(v),
         } {
-            Ok(address) => address,
+            Ok(v) => v,
             Err(e) => return Err(e),
         };
         Ok(Person {
@@ -156,6 +163,7 @@ impl<'a, T3> PersonBuilder<'a, AsyncBuilderMarker, String, u8, T3> {
         })
     }
 }
+*/
 
 fn test_city() -> &'static str {
     "Tokyo"
@@ -178,12 +186,12 @@ async fn main() {
     println!("{:?}", b);
 
     // Asynchronous builder
-    let c_builder = Person::new()
+    /*let c_builder = Person::new()
         .name_async(|| async { String::from("Joe") })
         .age(17)
         .address_lazy(test_city);
     let c = c_builder.build().await; // `name` and `address` is evaluated here
-    println!("{:?}", c);
+    println!("{:?}", c);*/
 
     let d_builder = Person::new()
         .name_lazy(move || format!("Jessica {}", b_surname))

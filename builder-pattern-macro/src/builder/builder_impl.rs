@@ -1,4 +1,4 @@
-use crate::struct_input::StructInput;
+use crate::{attributes::Setters, struct_input::StructInput};
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -22,19 +22,64 @@ impl<'a> ToTokens for BuilderImpl<'a> {
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
         let ty_tokens = self.input.tokenize_types();
-        let struct_init_args = self.struct_init_args();
+        let mut struct_init_args = self.struct_init_args(false).collect::<Vec<TokenStream>>();
 
-        tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
-            #where_clause
-            {
-                #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
-                    #ident {
-                        #(#struct_init_args),*
+        let mut fields_need_lazy_validation = vec![];
+        let mut index = 0;
+        self.input
+            .required_fields
+            .iter()
+            .chain(self.input.optional_fields.iter())
+            .for_each(|f| {
+                if !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
+                    && f.attrs.validator.is_some()
+                {
+                    fields_need_lazy_validation.push(f);
+                    struct_init_args[index] = f.ident.to_token_stream();
+                }
+                index += 1;
+            });
+        if fields_need_lazy_validation.is_empty() {
+            tokens.extend(quote! {
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
+                #where_clause
+                {
+                    #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
+                        #ident {
+                            #(#struct_init_args),*
+                        }
                     }
                 }
-            }
-        })
+            })
+        } else {
+            let validated = fields_need_lazy_validation.iter().map(|f| {
+                let ident = &f.ident;
+                quote! {
+                    let #ident = match match self.#ident.unwrap() {
+                        ::builder_pattern::setter::ValidatedSetter::Lazy(f) => f(),
+                        ::builder_pattern::setter::ValidatedSetter::Value(v) => Ok(v),
+                        _ => unreachable!()
+                    } {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
+                    };
+                }
+            });
+            tokens.extend(quote!{
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
+                #where_clause
+                {
+                    #vis fn build(self) -> ::std::result::Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
+                        #(#validated)*
+                        Ok(
+                            #ident {
+                                #(#struct_init_args),*
+                            }
+                        )
+                    }
+                }
+            })
+        }
     }
 }
 
@@ -66,18 +111,28 @@ impl<'a> BuilderImpl<'a> {
     }
 
     /// An iterator to express initialize statements.
-    fn struct_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
+    fn struct_init_args(&'_ self, is_async: bool) -> impl '_ + Iterator<Item = TokenStream> {
         self.input
             .required_fields
             .iter()
             .chain(self.input.optional_fields.iter())
-            .map(|f| {
+            .map(move |f| {
                 let ident = &f.ident;
-                quote! {
-                    #ident: match self.#ident.unwrap() {
-                        ::builder_pattern::setter::Setter::Value(v) => v,
-                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
-                        _ => unreachable!(),
+                if is_async {
+                    quote! {
+                        #ident: match self.#ident.unwrap() {
+                            ::builder_pattern::setter::Setter::Value(v) => v,
+                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                            ::builder_pattern::setter::Setter::Async(f) => f().await,
+                        }
+                    }
+                } else {
+                    quote! {
+                        #ident: match self.#ident.unwrap() {
+                            ::builder_pattern::setter::Setter::Value(v) => v,
+                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                            _ => unreachable!(),
+                        }
                     }
                 }
             })
