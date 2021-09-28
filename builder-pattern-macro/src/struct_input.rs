@@ -100,6 +100,10 @@ impl ToTokens for StructInput {
 }
 
 impl StructInput {
+    pub fn num_fields(&self) -> usize {
+        self.required_fields.len() + self.optional_fields.len()
+    }
+
     /// Name of the builder structure.
     pub fn builder_name(&self) -> Ident {
         Ident::new(&format!("{}Builder", self.ident), Span::call_site())
@@ -120,7 +124,7 @@ impl StructInput {
 
     /// An iterator for generics like [U1, U2, ...].
     pub fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
-        (0..(self.required_fields.len() + self.optional_fields.len()))
+        (0..(self.num_fields()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
     }

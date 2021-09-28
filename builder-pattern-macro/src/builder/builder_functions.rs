@@ -41,6 +41,9 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 if !(f.attrs.setters & Setters::LAZY).is_empty() {
                     self.write_lazy_setter(tokens, f, index, &mut builder_fields);
                 }
+                if !(f.attrs.setters & Setters::ASYNC).is_empty() {
+                    self.write_async_setter(tokens, f, index, &mut builder_fields);
+                }
                 index += 1;
             });
     }
@@ -176,11 +179,7 @@ impl<'a> BuilderFunctions<'a> {
         let impl_tokens = self.input.tokenize_impl();
         let ty_tokens = self.input.tokenize_types();
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
-        let arg_type_gen = if f.attrs.use_into {
-            quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
-        } else {
-            quote! {<ValType: #fn_lifetime + ::core::ops::Fn() -> #ty>}
-        };
+        let arg_type_gen = quote! {<ValType: #fn_lifetime + ::core::ops::Fn() -> #ty>};
         let arg_type = quote! {ValType};
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -188,13 +187,15 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
                     ::builder_pattern::setter::ValidatedSetter::Lazy(
-                        Box::new(move || #v((value)()))
+                        std::boxed::Box::new(move || #v((value)()))
                     )
                 )
             },
             None => quote! {
                 #ident: Some(
-                    ::builder_pattern::setter::Setter::Lazy(Box::new(value))
+                    ::builder_pattern::setter::Setter::Lazy(
+                        std::boxed::Box::new(value)
+                    )
                 )
             },
         };
@@ -207,6 +208,69 @@ impl<'a> BuilderFunctions<'a> {
 
         let ret_type_val = quote! {
             #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
+        };
+
+        tokens.extend(quote! {
+            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker>
+                #where_clause
+            {
+                #(#documents)*
+                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type_val {
+                    #ret_expr_val
+                }
+            }
+        });
+    }
+
+    fn write_async_setter(
+        &self,
+        tokens: &mut TokenStream,
+        f: &Field,
+        index: usize,
+        builder_fields: &mut Vec<TokenStream>,
+    ) {
+        let (ident, ty) = (&f.ident, &f.ty);
+        let seter_name = Ident::new(&format!("{}_async", &ident.to_string()), Span::call_site());
+        let vis = &self.input.vis;
+        let builder_name = self.input.builder_name();
+        let where_clause = &self.input.generics.where_clause;
+        let lifetimes = self.input.lifetimes();
+        let fn_lifetime = self.input.fn_lifetime();
+        let impl_tokens = self.input.tokenize_impl();
+        let ty_tokens = self.input.tokenize_types();
+        let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
+        let arg_type_gen = quote! {<
+            ReturnType: #fn_lifetime + ::std::future::Future<Output = #ty>,
+            ValType: #fn_lifetime + ::core::ops::Fn() -> ReturnType
+        >};
+        let arg_type = quote! {ValType};
+        let documents = Self::documents(f, Setters::VALUE);
+
+        builder_fields[index] = match &f.attrs.validator {
+            Some(v) => quote_spanned! { v.span() =>
+                #ident: Some(
+                    ::builder_pattern::setter::ValidatedSetter::Async(
+                        std::boxed::Box::new(move || std::boxed::Box::pin(#v((value)())))
+                    )
+                )
+            },
+            None => quote! {
+                #ident: Some(
+                    ::builder_pattern::setter::Setter::Async(
+                        std::boxed::Box::new(move || std::boxed::Box::pin((value)()))
+                    )
+                )
+            },
+        };
+        let ret_expr_val = quote! {
+            #builder_name {
+                _phantom: ::std::marker::PhantomData,
+                #(#builder_fields),*
+            }
+        };
+
+        let ret_type_val = quote! {
+            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* ::builder_pattern::setter::AsyncBuilderMarker>
         };
 
         tokens.extend(quote! {

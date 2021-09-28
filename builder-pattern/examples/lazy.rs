@@ -23,7 +23,6 @@ fn is_not_empty(name: &'static str) -> Result<&'static str, &'static str> {
         Ok(name)
     }
 }
-
 /*
 struct PersonBuilder<'a, AsyncField, T1, T2, T3> {
     name: Option<Setter<'a, String>>,
@@ -187,12 +186,12 @@ async fn main() {
     println!("{:?}", b);
 
     // Asynchronous builder
-    /*let c_builder = Person::new()
+    let c_builder = Person::new()
         .name_async(|| async { String::from("Joe") })
         .age(17)
         .address_lazy(test_city);
     let c = c_builder.build().await; // `name` and `address` is evaluated here
-    println!("{:?}", c);*/
+    println!("{:?}", c);
 
     let d_builder = Person::new()
         .name_lazy(move || format!("Jessica {}", b_surname))

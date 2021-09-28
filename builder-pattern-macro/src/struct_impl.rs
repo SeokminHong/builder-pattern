@@ -73,15 +73,21 @@ impl<'a> StructImpl<'a> {
                         Setters::VALUE => quote_spanned! { expr.span() =>
                             #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
                         },
-                        Setters::LAZY => {
-                            match &f.attrs.validator {
-                                Some(v) => quote_spanned! { expr.span() =>
-                                    #ident: Some(::builder_pattern::setter::ValidatedSetter::Lazy(Box::new(move || #v((#expr)()))))
-                                },
-                                None => quote_spanned! { expr.span() =>
-                                    #ident: Some(::builder_pattern::setter::Setter::Lazy(Box::new(#expr)))
-                                }
-                            }
+                        Setters::LAZY => match &f.attrs.validator {
+                            Some(v) => quote_spanned! { expr.span() =>
+                                #ident: Some(
+                                    ::builder_pattern::setter::ValidatedSetter::Lazy(
+                                        std::boxed::Box::new(move || #v((#expr)()))
+                                    )
+                                )
+                            },
+                            None => quote_spanned! { expr.span() =>
+                                #ident: Some(
+                                    ::builder_pattern::setter::Setter::Lazy(
+                                        std::boxed::Box::new(#expr)
+                                    )
+                                )
+                            },
                         },
                         _ => unimplemented!(),
                     }
