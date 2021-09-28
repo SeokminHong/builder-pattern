@@ -1,7 +1,7 @@
-use builder_pattern::setter::*;
+//use builder_pattern::setter::*;
 use builder_pattern::Builder;
-use std::future::Future;
-use std::marker::PhantomData;
+//use std::future::Future;
+//use std::marker::PhantomData;
 
 #[derive(Builder, Debug)]
 struct Person {
@@ -165,6 +165,7 @@ impl<'a, T3> PersonBuilder<'a, AsyncBuilderMarker, String, u8, T3> {
 }
 */
 
+#[allow(dead_code)]
 fn test_city() -> &'static str {
     "Tokyo"
 }
@@ -172,9 +173,9 @@ fn test_city() -> &'static str {
 #[tokio::main]
 async fn main() {
     // `name` is evaluated here
-    let a_builder = Person::new().name(String::from("Jack")).age(30);
-    let a = a_builder.build(); // `address` is evaluated here
-    println!("{:?}", a);
+    //let a_builder = Person::new().name(String::from("Jack")).age(30);
+    //let a = a_builder.build(); // `address` is evaluated here
+    //println!("{:?}", a);
 
     let b_surname = "Johanson";
     // Lazy builder

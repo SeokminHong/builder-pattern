@@ -1,6 +1,6 @@
 use crate::{attributes::Setters, field::Field, struct_input::StructInput};
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use std::str::FromStr;
 use syn::spanned::Spanned;
@@ -38,9 +38,9 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 if !(f.attrs.setters & Setters::VALUE).is_empty() {
                     self.write_value_setter(tokens, f, index, &mut builder_fields);
                 }
-                //if !(f.attrs.setters & Setters::LAZY).is_empty() {
-                //    self.write_lazy_setter(tokens, f, index, &mut builder_fields);
-                //}
+                if !(f.attrs.setters & Setters::LAZY).is_empty() {
+                    self.write_lazy_setter(tokens, f, index, &mut builder_fields);
+                }
                 index += 1;
             });
     }
@@ -158,7 +158,7 @@ impl<'a> BuilderFunctions<'a> {
             }
         });
     }
-    #[allow(dead_code)]
+
     fn write_lazy_setter(
         &self,
         tokens: &mut TokenStream,
@@ -167,6 +167,7 @@ impl<'a> BuilderFunctions<'a> {
         builder_fields: &mut Vec<TokenStream>,
     ) {
         let (ident, ty) = (&f.ident, &f.ty);
+        let seter_name = Ident::new(&format!("{}_lazy", &ident.to_string()), Span::call_site());
         let vis = &self.input.vis;
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
@@ -175,20 +176,27 @@ impl<'a> BuilderFunctions<'a> {
         let impl_tokens = self.input.tokenize_impl();
         let ty_tokens = self.input.tokenize_types();
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
-        let (arg_type_gen, arg_type) = if f.attrs.use_into {
-            (
-                Some(quote! {<IntoType: Into<#ty>>}),
-                TokenStream::from_str("IntoType").unwrap(),
-            )
+        let arg_type_gen = if f.attrs.use_into {
+            quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
         } else {
-            (None, quote! {#ty})
+            quote! {<ValType: #fn_lifetime + ::core::ops::Fn() -> #ty>}
         };
+        let arg_type = quote! {ValType};
         let documents = Self::documents(f, Setters::VALUE);
 
-        builder_fields[index] = quote! {
-            #ident: Some(
-                ::builder_pattern::setter::Setter::Value(value.into())
-            )
+        builder_fields[index] = match &f.attrs.validator {
+            Some(v) => quote_spanned! { v.span() =>
+                #ident: Some(
+                    ::builder_pattern::setter::ValidatedSetter::Lazy(
+                        Box::new(move || #v((value)()))
+                    )
+                )
+            },
+            None => quote! {
+                #ident: Some(
+                    ::builder_pattern::setter::Setter::Lazy(Box::new(value))
+                )
+            },
         };
         let ret_expr_val = quote! {
             #builder_name {
@@ -197,25 +205,8 @@ impl<'a> BuilderFunctions<'a> {
             }
         };
 
-        let (ret_type_val, ret_expr_val) = match &f.attrs.validator {
-            Some(v) => (
-                quote! {
-                    ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>, String>
-                },
-                quote_spanned! { v.span() =>
-                    #[allow(clippy::useless_conversion)]
-                    match #v (value.into()) {
-                        ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr_val),
-                        ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
-                    }
-                },
-            ),
-            None => (
-                quote! {
-                    #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
-                },
-                ret_expr_val,
-            ),
+        let ret_type_val = quote! {
+            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
         };
 
         tokens.extend(quote! {
@@ -223,7 +214,7 @@ impl<'a> BuilderFunctions<'a> {
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type_val {
+                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type_val {
                     #ret_expr_val
                 }
             }
