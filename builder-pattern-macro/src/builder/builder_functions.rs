@@ -55,7 +55,7 @@ impl<'a> BuilderFunctions<'a> {
         let mut docs: Vec<Attribute> = Vec::new();
 
         let default = match f.attrs.default.as_ref() {
-            Some(expr) => format!("\n - Default: `{}`", expr.into_token_stream().to_string()),
+            Some((expr, _)) => format!("\n - Default: `{}`", expr.into_token_stream().to_string()),
             None => String::from(""),
         };
         let doc = format!(

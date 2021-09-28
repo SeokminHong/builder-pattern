@@ -10,7 +10,7 @@ struct Person {
     age: u8,
     // Default value is lazy evaluated.
     // Only lazy setter is provided.
-    // #[default_lazy(|| "Seoul")]
+    #[default_lazy(|| "Seoul")]
     #[setter(lazy)]
     #[validator(is_not_empty)]
     address: &'static str,
@@ -173,9 +173,9 @@ fn test_city() -> &'static str {
 #[tokio::main]
 async fn main() {
     // `name` is evaluated here
-    //let a_builder = Person::new().name(String::from("Jack")).age(30);
-    //let a = a_builder.build(); // `address` is evaluated here
-    //println!("{:?}", a);
+    let a_builder = Person::new().name(String::from("Jack")).age(30);
+    let a = a_builder.build(); // `address` is evaluated here
+    println!("{:?}", a);
 
     let b_surname = "Johanson";
     // Lazy builder

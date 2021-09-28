@@ -10,7 +10,7 @@ bitflags! {
 }
 
 pub struct FieldAttributes {
-    pub default: Option<Expr>,
+    pub default: Option<(Expr, Setters)>,
     pub hidden: bool,
     pub use_into: bool,
     pub validator: Option<Expr>,
@@ -40,6 +40,16 @@ impl From<Vec<Attribute>> for FieldAttributes {
                     unimplemented!("Duplicated `default` attributes.")
                 }
                 parse_default(attr, &mut attributes)
+            } else if attr.path.is_ident("default_lazy") {
+                if attributes.default.is_some() {
+                    unimplemented!("Duplicated `default` attributes.")
+                }
+                parse_lazy_default(attr, &mut attributes)
+            } else if attr.path.is_ident("default_async") {
+                if attributes.default.is_some() {
+                    unimplemented!("Duplicated `default` attributes.")
+                }
+                unimplemented!("Asynchronous default is not implemented yet.")
             } else if attr.path.is_ident("hidden") {
                 attributes.hidden = true;
             } else if attr.path.is_ident("into") {
@@ -61,7 +71,14 @@ impl From<Vec<Attribute>> for FieldAttributes {
 
 fn parse_default(attr: &Attribute, attributes: &mut FieldAttributes) {
     attributes.default = match attr.parse_args() {
-        Ok(ex) => Some(ex),
+        Ok(ex) => Some((ex, Setters::VALUE)),
+        Err(_) => unimplemented!("Invalid default value."),
+    };
+}
+
+fn parse_lazy_default(attr: &Attribute, attributes: &mut FieldAttributes) {
+    attributes.default = match attr.parse_args() {
+        Ok(ex) => Some((ex, Setters::LAZY)),
         Err(_) => unimplemented!("Invalid default value."),
     };
 }

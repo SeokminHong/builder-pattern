@@ -1,4 +1,4 @@
-use crate::struct_input::StructInput;
+use crate::{attributes::Setters, struct_input::StructInput};
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -32,6 +32,7 @@ impl<'a> ToTokens for StructImpl<'a> {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #(#docs)*
                 #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, ()> {
+                    #[allow(clippy::redundant_closure_call)]
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
                         #(#builder_init_args),*
@@ -67,9 +68,25 @@ impl<'a> StructImpl<'a> {
                 }
             })
             .chain(self.input.optional_fields.iter().map(|f| {
-                let (ident, expr) = (&f.ident, &f.attrs.default.as_ref());
-                quote_spanned! { expr.span() =>
-                    #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
+                    match *setters {
+                        Setters::VALUE => quote_spanned! { expr.span() =>
+                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                        },
+                        Setters::LAZY => {
+                            match &f.attrs.validator {
+                                Some(v) => quote_spanned! { expr.span() =>
+                                    #ident: Some(::builder_pattern::setter::ValidatedSetter::Lazy(Box::new(move || #v((#expr)()))))
+                                },
+                                None => quote_spanned! { expr.span() =>
+                                    #ident: Some(::builder_pattern::setter::Setter::Lazy(Box::new(#expr)))
+                                }
+                            }
+                        },
+                        _ => unimplemented!(),
+                    }
+                } else {
+                    unimplemented!()
                 }
             }))
     }
@@ -94,7 +111,7 @@ impl<'a> StructImpl<'a> {
             docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
             for f in self.input.optional_fields.iter() {
                 let ident = &f.ident;
-                let default = f
+                let (expr, _) = f
                     .attrs
                     .default
                     .as_ref()
@@ -104,7 +121,7 @@ impl<'a> StructImpl<'a> {
                     " ### `{}`\n - Type: `{}`\n - Default: `{}`\n\n",
                     ident,
                     f.type_documents(),
-                    default.into_token_stream()
+                    expr.into_token_stream()
                 );
                 docs.push(parse_quote!(#[doc=#doc]));
                 docs.append(f.documents().as_mut());

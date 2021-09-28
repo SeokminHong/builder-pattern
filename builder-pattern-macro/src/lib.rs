@@ -422,7 +422,7 @@ extern crate proc_macro2;
 /// ```
 #[proc_macro_derive(
     Builder,
-    attributes(default, default_lazy, hidden, into, setter, validator)
+    attributes(default, default_async, default_lazy, hidden, into, setter, validator)
 )]
 pub fn derive_builder(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as StructInput);
