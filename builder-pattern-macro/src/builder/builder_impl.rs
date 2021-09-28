@@ -77,7 +77,7 @@ impl<'a> BuilderImpl<'a> {
                     #ident: match self.#ident.unwrap() {
                         ::builder_pattern::setter::Setter::Value(v) => v,
                         ::builder_pattern::setter::Setter::Lazy(f) => f(),
-                        _ => panic!("unreachable"),
+                        _ => unreachable!(),
                     }
                 }
             })
