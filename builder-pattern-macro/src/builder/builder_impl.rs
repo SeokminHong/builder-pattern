@@ -12,21 +12,22 @@ impl<'a> ToTokens for BuilderImpl<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let mut async_fields = vec![];
         let mut sync_fields = vec![];
-        self.input
-            .required_fields
-            .iter()
-            .chain(self.input.optional_fields.iter())
-            .for_each(|f| {
-                if !(f.attrs.setters & Setters::ASYNC).is_empty() {
-                    async_fields.push(f);
-                }
-                if !(f.attrs.setters & (Setters::LAZY | Setters::VALUE)).is_empty() {
-                    sync_fields.push(f);
-                }
-            });
+        self.input.required_fields.iter().for_each(|f| {
+            if !(f.attrs.setters & (Setters::LAZY | Setters::VALUE)).is_empty() {
+                sync_fields.push(f);
+            }
+            if !(f.attrs.setters & Setters::ASYNC).is_empty() {
+                async_fields.push(f);
+            }
+        });
+        self.input.optional_fields.iter().for_each(|f| {
+            if !(f.attrs.setters & Setters::ASYNC).is_empty() {
+                async_fields.push(f);
+            }
+        });
         // All of fields have synchronous setters.
         // The structure can be build synchronously.
-        if sync_fields.len() == self.input.num_fields() {
+        if sync_fields.len() == self.input.required_fields.len() {
             self.write_sync_builder(tokens);
         }
         // The structure has asynchronous setter(s).
