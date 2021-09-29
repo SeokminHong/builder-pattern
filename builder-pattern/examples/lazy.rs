@@ -30,6 +30,7 @@ async fn main() {
     // `name` is evaluated here
     let a_builder = Person::new().name(String::from("Jack")).age(30);
     let a = a_builder.build(); // `address` is evaluated here
+    println!("{:?}", a);
     assert_eq!(
         a,
         Ok(Person {
@@ -46,6 +47,7 @@ async fn main() {
         .age(50)
         .address_lazy(|| "New York");
     let b = b_builder.build(); // `name` and `address` is evaluated here
+    println!("{:?}", b);
     assert_eq!(
         b,
         Ok(Person {
@@ -61,6 +63,7 @@ async fn main() {
         .age(17)
         .address_lazy(test_city);
     let c = c_builder.build().await; // `name` and `address` is evaluated here
+    println!("{:?}", c);
     assert_eq!(
         c,
         Ok(Person {
@@ -75,5 +78,6 @@ async fn main() {
         .age(50)
         .address_lazy(|| "");
     let d = d_builder.build(); // `name` and `address` is evaluated here
+    println!("{:?}", d);
     assert!(d.is_err());
 }

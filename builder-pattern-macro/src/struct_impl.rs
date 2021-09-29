@@ -70,8 +70,13 @@ impl<'a> StructImpl<'a> {
             .chain(self.input.optional_fields.iter().map(|f| {
                 if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
                     match *setters {
-                        Setters::VALUE => quote_spanned! { expr.span() =>
-                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                        Setters::VALUE => match &f.attrs.validator {
+                            Some(_) => quote_spanned! { expr.span() =>
+                                #ident: Some(::builder_pattern::setter::ValidatedSetter::Value(#expr))
+                            },
+                            None => quote_spanned! { expr.span() =>
+                                #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                            }
                         },
                         Setters::LAZY => match &f.attrs.validator {
                             Some(v) => quote_spanned! { expr.span() =>
