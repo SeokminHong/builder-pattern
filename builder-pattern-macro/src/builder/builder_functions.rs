@@ -250,7 +250,9 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
                     ::builder_pattern::setter::ValidatedSetter::Async(
-                        std::boxed::Box::new(move || std::boxed::Box::pin(#v((value)())))
+                        std::boxed::Box::new(move || {
+                            std::boxed::Box::pin(async move { #v((value)().await) })
+                        })
                     )
                 )
             },
