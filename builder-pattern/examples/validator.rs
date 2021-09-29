@@ -1,7 +1,7 @@
 use builder_pattern::Builder;
 use std::cmp::Ordering;
 
-#[derive(Builder, Debug)]
+#[derive(Builder, Debug, PartialEq)]
 struct Test {
     #[validator(to_positive)]
     positive: i32,
@@ -19,8 +19,12 @@ fn main() {
     let a = Test::new().positive(5).unwrap().build();
     let b = Test::new().positive(-5).unwrap().build();
     println!("a: {:?}, b: {:?}", a, b);
+    assert_eq!(a, Test { positive: 5 });
+    assert_eq!(b, Test { positive: 5 });
 
-    if let Err(err) = Test::new().positive(0) {
+    let c = Test::new().positive(0);
+    assert!(c.is_err());
+    if let Err(err) = c {
         println!("{}", err);
     }
 }

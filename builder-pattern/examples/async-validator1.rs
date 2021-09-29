@@ -51,7 +51,8 @@ async fn main() {
     println!("{:?}", t3);
     assert!(t3.is_err());
 
-    // Validator should be applied for default value.
+    // If a field having validator and default value and haven't been set,
+    // it should be validated when building.
     let t4 = Test::new()
         .a_async(|| async { 4 })
         .b_async(|| async { 5 })
