@@ -3,14 +3,14 @@ use futures::future::LocalBoxFuture;
 
 pub enum Setter<'a, T> {
     Value(T),
-    Lazy(Box<dyn 'a + Fn() -> T>),
+    Lazy(Box<dyn 'a + FnOnce() -> T>),
     #[cfg(feature = "future")]
-    Async(Box<dyn 'a + Fn() -> LocalBoxFuture<'a, T>>),
+    Async(Box<dyn 'a + FnOnce() -> LocalBoxFuture<'a, T>>),
 }
 
 pub enum ValidatedSetter<'a, T> {
     Value(T),
-    Lazy(Box<dyn 'a + Fn() -> Result<T, &'static str>>),
+    Lazy(Box<dyn 'a + FnOnce() -> Result<T, &'static str>>),
     #[cfg(feature = "future")]
     Async(Box<dyn 'a + FnOnce() -> LocalBoxFuture<'a, Result<T, &'static str>>>),
 }
