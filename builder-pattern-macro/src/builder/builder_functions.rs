@@ -117,37 +117,48 @@ impl<'a> BuilderFunctions<'a> {
         };
         let documents = Self::documents(f, Setters::VALUE);
 
-        builder_fields[index] = quote! {
-            #ident: Some(
-                ::builder_pattern::setter::Setter::Value(value.into())
-            )
-        };
-        let ret_expr = quote! {
-            #builder_name {
-                _phantom: ::std::marker::PhantomData,
-                #(#builder_fields),*
-            }
-        };
-
         let (ret_type, ret_expr) = match &f.attrs.validator {
-            Some(v) => (
-                quote! {
-                    ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>, String>
-                },
-                quote_spanned! { v.span() =>
-                    #[allow(clippy::useless_conversion)]
-                    match #v (value.into()) {
-                        ::std::result::Result::Ok(value) => ::std::result::Result::Ok(#ret_expr),
-                        ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
-                    }
-                },
-            ),
-            None => (
-                quote! {
-                    #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
-                },
-                ret_expr,
-            ),
+            Some(v) => {
+                builder_fields[index] = quote! {
+                    #ident: Some(
+                        ::builder_pattern::setter::ValidatedSetter::Value(value.into())
+                    )
+                };
+                (
+                    quote! {
+                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>, String>
+                    },
+                    quote_spanned! { v.span() =>
+                        #[allow(clippy::useless_conversion)]
+                        match #v (value.into()) {
+                            ::std::result::Result::Ok(value) => ::std::result::Result::Ok(
+                                #builder_name {
+                                    _phantom: ::std::marker::PhantomData,
+                                    #(#builder_fields),*
+                                }),
+                            ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
+                        }
+                    },
+                )
+            }
+            None => {
+                builder_fields[index] = quote! {
+                    #ident: Some(
+                        ::builder_pattern::setter::Setter::Value(value.into())
+                    )
+                };
+                (
+                    quote! {
+                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
+                    },
+                    quote! {
+                        #builder_name {
+                            _phantom: ::std::marker::PhantomData,
+                            #(#builder_fields),*
+                        }
+                    },
+                )
+            }
         };
 
         tokens.extend(quote! {

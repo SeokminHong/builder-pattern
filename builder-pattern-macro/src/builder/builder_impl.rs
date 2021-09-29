@@ -1,4 +1,4 @@
-use crate::{attributes::Setters, field::Field, struct_input::StructInput};
+use crate::{attributes::Setters, struct_input::StructInput};
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -65,43 +65,6 @@ impl<'a> BuilderImpl<'a> {
             .chain(self.optional_generics())
     }
 
-    /// An iterator to express initialize statements.
-    fn struct_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        self.input
-            .required_fields
-            .iter()
-            .chain(self.input.optional_fields.iter())
-            .map(move |f| {
-                let ident = &f.ident;
-                quote! {
-                    #ident: match self.#ident.unwrap() {
-                        ::builder_pattern::setter::Setter::Value(v) => v,
-                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
-                        _ => unreachable!(),
-                    }
-                }
-            })
-    }
-
-    fn get_setter_meta(&'a self, struct_init_args: &'a mut Vec<TokenStream>) -> Vec<&'a Field> {
-        let mut fields_need_lazy_validation = vec![];
-        let mut index = 0;
-        self.input
-            .required_fields
-            .iter()
-            .chain(self.input.optional_fields.iter())
-            .for_each(|f| {
-                if !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
-                    && f.attrs.validator.is_some()
-                {
-                    fields_need_lazy_validation.push(f);
-                    struct_init_args[index] = f.ident.to_token_stream();
-                }
-                index += 1;
-            });
-        fields_need_lazy_validation
-    }
-
     fn write_sync_builder(&self, tokens: &mut TokenStream) {
         let ident = &self.input.ident;
         let vis = &self.input.vis;
@@ -115,15 +78,46 @@ impl<'a> BuilderImpl<'a> {
         let optional_generics = self.optional_generics();
         let satisfied_generics = self.satified_generics();
         let ty_tokens = self.input.tokenize_types();
-        let mut struct_init_args = self.struct_init_args().collect::<Vec<TokenStream>>();
 
-        let fields_need_lazy_validation = self.get_setter_meta(&mut struct_init_args);
-        if fields_need_lazy_validation.is_empty() {
+        let mut struct_init_args = vec![];
+        let mut validated_init_fields = vec![];
+        let mut init_fields = vec![];
+        self.input
+            .required_fields
+            .iter()
+            .chain(self.input.optional_fields.iter())
+            .for_each(|f| {
+                let ident = &f.ident;
+                struct_init_args.push(ident.to_token_stream());
+                if f.attrs.validator.is_some() {
+                    validated_init_fields.push(quote! {
+                        let #ident = match match self.#ident.unwrap() {
+                            ::builder_pattern::setter::ValidatedSetter::Lazy(f) => f(),
+                            ::builder_pattern::setter::ValidatedSetter::Value(v) => Ok(v),
+                            _ => unreachable!(),
+                        } {
+                            Ok(v) => v,
+                            Err(e) => return Err(e),
+                        };
+                    });
+                } else {
+                    init_fields.push(quote! {
+                        let #ident = match self.#ident.unwrap() {
+                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                            ::builder_pattern::setter::Setter::Value(v) => v,
+                            _ => unreachable!(),
+                        };
+                    });
+                }
+            });
+        if validated_init_fields.is_empty() {
             tokens.extend(quote! {
-                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
+                    <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
                 #where_clause
                 {
                     #vis fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
+                        #(#init_fields)*
                         #ident {
                             #(#struct_init_args),*
                         }
@@ -131,25 +125,14 @@ impl<'a> BuilderImpl<'a> {
                 }
             })
         } else {
-            let validated = fields_need_lazy_validation.iter().map(|f| {
-                let ident = &f.ident;
-                quote! {
-                    let #ident = match match self.#ident.unwrap() {
-                        ::builder_pattern::setter::ValidatedSetter::Lazy(f) => f(),
-                        ::builder_pattern::setter::ValidatedSetter::Value(v) => Ok(v),
-                        _ => unreachable!()
-                    } {
-                        Ok(v) => v,
-                        Err(e) => return Err(e),
-                    };
-                }
-            });
             tokens.extend(quote!{
-                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
+                    <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, ()>
                 #where_clause
                 {
                     #vis fn build(self) -> ::std::result::Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
-                        #(#validated)*
+                        #(#init_fields)*
+                        #(#validated_init_fields)*
                         Ok(
                             #ident {
                                 #(#struct_init_args),*
