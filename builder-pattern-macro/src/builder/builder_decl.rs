@@ -34,8 +34,14 @@ impl<'a> ToTokens for BuilderDecl<'a> {
 
         tokens.extend(quote! {
             #docs
-            #vis struct #builder_name <#fn_lifetime, #impl_tokens #(#all_generics,)* AsyncFieldMarker> #where_clause {
-                _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics,)* AsyncFieldMarker)>,
+            #vis struct #builder_name<
+                #fn_lifetime,
+                #impl_tokens
+                #(#all_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            > #where_clause {
+                _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics,)* AsyncFieldMarker, ValidatorOption)>,
                 #(#builder_fields),*
             }
         });

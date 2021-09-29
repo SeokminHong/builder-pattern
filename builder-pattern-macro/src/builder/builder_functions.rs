@@ -121,12 +121,12 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => {
                 builder_fields[index] = quote! {
                     #ident: Some(
-                        ::builder_pattern::setter::ValidatedSetter::Value(value.into())
+                        ::builder_pattern::setter::Setter::Value(value)
                     )
                 };
                 (
                     quote! {
-                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>, String>
+                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>, String>
                     },
                     quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
@@ -149,7 +149,7 @@ impl<'a> BuilderFunctions<'a> {
                 };
                 (
                     quote! {
-                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
+                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>
                     },
                     quote! {
                         #builder_name {
@@ -162,7 +162,7 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker>
+            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
                 #where_clause
             {
                 #(#documents)*
@@ -197,7 +197,7 @@ impl<'a> BuilderFunctions<'a> {
         builder_fields[index] = match &f.attrs.validator {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
-                    ::builder_pattern::setter::ValidatedSetter::Lazy(
+                    ::builder_pattern::setter::Setter::LazyValidated(
                         std::boxed::Box::new(move || #v((value)()))
                     )
                 )
@@ -217,16 +217,22 @@ impl<'a> BuilderFunctions<'a> {
             }
         };
 
-        let ret_type_val = quote! {
-            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker>
+        let validator_option = if f.attrs.validator.is_some() {
+            quote! {::builder_pattern::setter::HavingAsyncValidator}
+        } else {
+            quote! {ValidatorOption}
+        };
+
+        let ret_type = quote! {
+            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, #validator_option>
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker>
+            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type_val {
+                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type {
                     #ret_expr_val
                 }
             }
@@ -260,7 +266,7 @@ impl<'a> BuilderFunctions<'a> {
         builder_fields[index] = match &f.attrs.validator {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
-                    ::builder_pattern::setter::ValidatedSetter::Async(
+                    ::builder_pattern::setter::Setter::AsyncValidated(
                         std::boxed::Box::new(move || {
                             std::boxed::Box::pin(async move { #v((value)().await) })
                         })
@@ -282,16 +288,22 @@ impl<'a> BuilderFunctions<'a> {
             }
         };
 
-        let ret_type_val = quote! {
-            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* ::builder_pattern::setter::AsyncBuilderMarker>
+        let validator_option = if f.attrs.validator.is_some() {
+            quote! {::builder_pattern::setter::HavingAsyncValidator}
+        } else {
+            quote! {ValidatorOption}
+        };
+
+        let ret_type = quote! {
+            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* ::builder_pattern::setter::AsyncBuilderMarker, #validator_option>
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker>
+            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type_val {
+                #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type {
                     #ret_expr_val
                 }
             }

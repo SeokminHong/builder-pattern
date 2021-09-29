@@ -75,13 +75,14 @@ impl<'a> BuilderImpl<'a> {
         let fn_lifetime = self.input.fn_lifetime();
 
         let impl_tokens = self.input.tokenize_impl();
-        let optional_generics = self.optional_generics();
-        let satisfied_generics = self.satified_generics();
+        let optional_generics = self.optional_generics().collect::<Vec<_>>();
+        let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
         let ty_tokens = self.input.tokenize_types();
 
         let mut struct_init_args = vec![];
         let mut validated_init_fields = vec![];
         let mut init_fields = vec![];
+        let mut no_lazy_validation_fields = vec![];
         self.input
             .required_fields
             .iter()
@@ -89,17 +90,23 @@ impl<'a> BuilderImpl<'a> {
             .for_each(|f| {
                 let ident = &f.ident;
                 struct_init_args.push(ident.to_token_stream());
-                if f.attrs.validator.is_some() {
+                if f.attrs.validator.is_some()
+                    && !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
+                {
                     let async_case = if is_async {
-                        quote! {::builder_pattern::setter::ValidatedSetter::Async(f) => f().await}
+                        quote! {
+                            ::builder_pattern::setter::Setter::Async(f) => Ok(f().await),
+                            ::builder_pattern::setter::Setter::AsyncValidated(f) => f().await,
+                        }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
                     validated_init_fields.push(quote! {
                         let #ident = match match self.#ident.unwrap() {
-                            ::builder_pattern::setter::ValidatedSetter::Lazy(f) => f(),
-                            ::builder_pattern::setter::ValidatedSetter::Value(v) => Ok(v),
-                            #async_case,
+                            ::builder_pattern::setter::Setter::Value(v) => Ok(v),
+                            ::builder_pattern::setter::Setter::Lazy(f) => Ok(f()),
+                            ::builder_pattern::setter::Setter::LazyValidated(f) => f(),
+                            #async_case
                         } {
                             Ok(v) => v,
                             Err(e) => return Err(e),
@@ -107,18 +114,36 @@ impl<'a> BuilderImpl<'a> {
                     });
                 } else {
                     let async_case = if is_async {
-                        quote! {::builder_pattern::setter::Setter::Async(f) => f().await}
+                        quote! {
+                            ::builder_pattern::setter::Setter::Async(f) => f().await,
+                            _ => unimplemented!(),
+                        }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
                     init_fields.push(quote! {
                         let #ident = match self.#ident.unwrap() {
-                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
                             ::builder_pattern::setter::Setter::Value(v) => v,
-                            #async_case,
+                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                            #async_case
                         };
                     });
                 }
+                let async_case = if is_async {
+                    quote! {
+                        ::builder_pattern::setter::Setter::Async(f) => f().await,
+                        _ => unimplemented!(),
+                    }
+                } else {
+                    quote! {_ => unimplemented!()}
+                };
+                no_lazy_validation_fields.push(quote! {
+                    let #ident = match self.#ident.unwrap() {
+                        ::builder_pattern::setter::Setter::Value(v) => v,
+                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                        #async_case
+                    };
+                });
             });
         let (kw_async, async_generic) = if is_async {
             (
@@ -128,37 +153,37 @@ impl<'a> BuilderImpl<'a> {
         } else {
             (None, quote! {()})
         };
-        if validated_init_fields.is_empty() {
-            tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-                <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic>
-                #where_clause
-                {
-                    #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
-                        #(#init_fields)*
+        tokens.extend(quote! {
+        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
+            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ()>
+            #where_clause
+            {
+                #[allow(dead_code)]
+                #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
+                    #(#no_lazy_validation_fields)*
+                    #ident {
+                        #(#struct_init_args),*
+                    }
+                }
+            }
+        });
+
+        tokens.extend(quote!{
+        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
+            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ::builder_pattern::setter::HavingAsyncValidator>
+            #where_clause
+            {
+                #[allow(dead_code)]
+                #vis #kw_async fn build(self) -> ::std::result::Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
+                    #(#init_fields)*
+                    #(#validated_init_fields)*
+                    Ok(
                         #ident {
                             #(#struct_init_args),*
                         }
-                    }
+                    )
                 }
-            })
-        } else {
-            tokens.extend(quote!{
-            impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-                <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic>
-                #where_clause
-                {
-                    #vis #kw_async fn build(self) -> ::std::result::Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
-                        #(#init_fields)*
-                        #(#validated_init_fields)*
-                        Ok(
-                            #ident {
-                                #(#struct_init_args),*
-                            }
-                        )
-                    }
-                }
-            })
-        }
+            }
+        });
     }
 }

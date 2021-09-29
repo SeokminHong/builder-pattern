@@ -139,14 +139,8 @@ impl StructInput {
             .chain(self.optional_fields.iter())
             .map(move |f| {
                 let (ident, ty) = (&f.ident, &f.ty);
-                if f.attrs.validator.is_some() {
-                    quote! {
-                        #ident: Option<::builder_pattern::setter::ValidatedSetter<#fn_lifetime, #ty>>
-                    }
-                } else {
-                    quote! {
-                        #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
-                    }
+                quote! {
+                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
                 }
             })
     }

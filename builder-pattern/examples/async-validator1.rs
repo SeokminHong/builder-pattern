@@ -30,7 +30,7 @@ fn is_positive(v: i32) -> Result<i32, &'static str> {
 async fn main() {
     let t1 = Test::new().a(3).c(1).unwrap().build();
     println!("{:?}", t1);
-    assert_eq!(t1, Ok(Test { a: 3, b: 5, c: 1 }));
+    assert_eq!(t1, Test { a: 3, b: 5, c: 1 });
 
     let t2 = Test::new()
         .a_async(|| async { 4 })
@@ -39,7 +39,7 @@ async fn main() {
         .build()
         .await;
     println!("{:?}", t2);
-    assert_eq!(t2, Ok(Test { a: 4, b: 5, c: 1 }));
+    assert_eq!(t2, Test { a: 4, b: 5, c: 1 });
 
     let t3 = Test::new()
         .a_async(|| async { 4 })
