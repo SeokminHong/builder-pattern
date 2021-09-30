@@ -161,6 +161,7 @@ impl<'a> BuilderImpl<'a> {
                 #[allow(dead_code)]
                 #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
                     #(#no_lazy_validation_fields)*
+                    #[allow(clippy::inconsistent_struct_constructor)]
                     #ident {
                         #(#struct_init_args),*
                     }
@@ -178,6 +179,7 @@ impl<'a> BuilderImpl<'a> {
                     #(#init_fields)*
                     #(#validated_init_fields)*
                     Ok(
+                        #[allow(clippy::inconsistent_struct_constructor)]
                         #ident {
                             #(#struct_init_args),*
                         }
