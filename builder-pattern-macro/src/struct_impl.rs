@@ -25,7 +25,8 @@ impl<'a> ToTokens for StructImpl<'a> {
 
         let fn_lifetime = self.input.fn_lifetime();
 
-        let (has_lazy_validated_default, builder_init_args) = self.builder_init_args();
+        let (has_lazy_validated_default, validator_default, builder_init_args) =
+            self.builder_init_args();
         let docs = self.documents();
 
         let validator_option = if has_lazy_validated_default {
@@ -38,7 +39,15 @@ impl<'a> ToTokens for StructImpl<'a> {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #(#docs)*
                 #[allow(clippy::new_ret_no_self)]
-                #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, (), #validator_option> {
+                #vis fn new<#fn_lifetime>() -> #builder_name<
+                    #fn_lifetime,
+                    #(#lifetimes,)*
+                    #ty_tokens
+                    #(#empty_generics),*,
+                    (),
+                    #validator_option,
+                    #validator_default
+                > {
                     #[allow(clippy::redundant_closure_call)]
                     #builder_name {
                         _phantom: ::std::marker::PhantomData,
@@ -64,8 +73,9 @@ impl<'a> StructImpl<'a> {
 
     /// An iterator for initialize arguments of the builder.
     /// Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
-    fn builder_init_args(&self) -> (bool, Vec<TokenStream>) {
+    fn builder_init_args(&self) -> (bool, TokenStream, Vec<TokenStream>) {
         let mut has_lazy_validated_default = false;
+        let mut validator_default = quote! {::builder_pattern::list::Nil};
         let v = self
             .input
             .required_fields
@@ -79,30 +89,40 @@ impl<'a> StructImpl<'a> {
             .chain(self.input.optional_fields.iter().map(|f| {
                 if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
                     match *setters {
-                        Setters::VALUE => quote_spanned! { expr.span() =>
-                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
-                        },
-                        Setters::LAZY => {
-                            if f.attrs.validator.is_some() {
-                                has_lazy_validated_default = true;
+                        Setters::VALUE => match &f.attrs.validator {
+                            Some(v) => {
+                                validator_default = quote! {
+                                    <#validator_default as ::builder_pattern::list::Append>::Out
+                                };
+                                quote_spanned! { expr.span() =>
+                                    #ident: Some(::builder_pattern::setter::Setter::LazyValidated(
+                                        Box::new(move || #v(#expr))
+                                    ))
+                                }
                             }
-                            match &f.attrs.validator {
-                                Some(v) => quote_spanned! { expr.span() =>
+                            None => quote_spanned! { expr.span() =>
+                                #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                            },
+                        },
+                        Setters::LAZY => match &f.attrs.validator {
+                            Some(v) => {
+                                has_lazy_validated_default = true;
+                                quote_spanned! { expr.span() =>
                                     #ident: Some(
                                         ::builder_pattern::setter::Setter::LazyValidated(
                                             std::boxed::Box::new(move || #v((#expr)()))
                                         )
                                     )
-                                },
-                                None => quote_spanned! { expr.span() =>
-                                    #ident: Some(
-                                        ::builder_pattern::setter::Setter::Lazy(
-                                            std::boxed::Box::new(#expr)
-                                        )
-                                    )
-                                },
+                                }
                             }
-                        }
+                            None => quote_spanned! { expr.span() =>
+                                #ident: Some(
+                                    ::builder_pattern::setter::Setter::Lazy(
+                                        std::boxed::Box::new(#expr)
+                                    )
+                                )
+                            },
+                        },
                         _ => unimplemented!(),
                     }
                 } else {
@@ -110,7 +130,7 @@ impl<'a> StructImpl<'a> {
                 }
             }))
             .collect::<Vec<_>>();
-        (has_lazy_validated_default, v)
+        (has_lazy_validated_default, validator_default, v)
     }
 
     fn documents(&self) -> Vec<Attribute> {
@@ -152,4 +172,8 @@ impl<'a> StructImpl<'a> {
 
         docs
     }
+
+    //pub fn ty_validator_having_defaults(&self) -> impl Iterator<Item = TokenStream> {
+    //   self.input.optional_fields.iter()
+    //}
 }

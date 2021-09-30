@@ -1,25 +1,5 @@
 //use builder_pattern::Builder;
 
-// Inspired by type lists implementation from
-// https://stackoverflow.com/questions/40219725/constructing-hetereogenous-type-lists-in-rust
-pub struct Nil;
-pub struct Cons<T>(T);
-
-trait Append: Sized {
-    type Out;
-}
-
-impl Append for Nil {
-    type Out = Cons<Nil>;
-}
-
-impl<T> Append for Cons<T>
-where
-    T: Append,
-{
-    type Out = Cons<<T as Append>::Out>;
-}
-
 #[derive(Debug, PartialEq)]
 struct Test {
     //#[default(-1)]
@@ -40,7 +20,14 @@ impl Test {
     /// - Default: `- 1`
     ///
     #[allow(clippy::new_ret_no_self)]
-    fn new<'fn_lifetime>() -> TestBuilder<'fn_lifetime, (), (), (), (), <Nil as Append>::Out> {
+    fn new<'fn_lifetime>() -> TestBuilder<
+        'fn_lifetime,
+        (),
+        (),
+        (),
+        (),
+        <::builder_pattern::list::Nil as ::builder_pattern::list::Append>::Out,
+    > {
         #[allow(clippy::redundant_closure_call)]
         TestBuilder {
             _phantom: ::std::marker::PhantomData,
@@ -71,7 +58,7 @@ struct TestBuilder<
     a: Option<::builder_pattern::setter::Setter<'fn_lifetime, i32>>,
 }
 impl<'fn_lifetime, TyBuilderPattern2>
-    TestBuilder<'fn_lifetime, i32, TyBuilderPattern2, (), (), Nil>
+    TestBuilder<'fn_lifetime, i32, TyBuilderPattern2, (), (), ::builder_pattern::list::Nil>
 {
     #[allow(dead_code)]
     fn build(self) -> Test {
@@ -90,7 +77,14 @@ impl<'fn_lifetime, TyBuilderPattern2>
     }
 }
 impl<'fn_lifetime, TyBuilderPattern2, ConsType>
-    TestBuilder<'fn_lifetime, i32, TyBuilderPattern2, (), (), Cons<ConsType>>
+    TestBuilder<
+        'fn_lifetime,
+        i32,
+        TyBuilderPattern2,
+        (),
+        (),
+        ::builder_pattern::list::Cons<ConsType>,
+    >
 {
     #[allow(dead_code)]
     fn build(self) -> ::std::result::Result<Test, &'static str> {
@@ -153,7 +147,7 @@ impl<'fn_lifetime, TyBuilderPattern1, AsyncFieldMarker, ValidatorOption, ConsTyp
         (),
         AsyncFieldMarker,
         ValidatorOption,
-        Cons<ConsType>,
+        ::builder_pattern::list::Cons<ConsType>,
     >
 {
     /// # a

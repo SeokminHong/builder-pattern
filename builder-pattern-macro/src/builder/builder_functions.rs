@@ -117,16 +117,26 @@ impl<'a> BuilderFunctions<'a> {
         };
         let documents = Self::documents(f, Setters::VALUE);
 
-        let (ret_type, ret_expr) = match &f.attrs.validator {
+        let (ret_type, ret_expr, validator_default_impl, validator_default_generics) = match &f
+            .attrs
+            .validator
+        {
             Some(v) => {
                 builder_fields[index] = quote! {
                     #ident: Some(
                         ::builder_pattern::setter::Setter::Value(value)
                     )
                 };
+                let (validator_default_impl, validator_default_generics) = match f.attrs.default {
+                    Some((_, Setters::VALUE)) => (
+                        quote! { ConsType },
+                        quote! {::builder_pattern::list::Cons<ConsType>},
+                    ),
+                    _ => (quote! {ValidatorDefault}, quote! {ValidatorDefault}),
+                };
                 (
                     quote! {
-                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>, String>
+                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption, #validator_default_impl>, String>
                     },
                     quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
@@ -139,6 +149,8 @@ impl<'a> BuilderFunctions<'a> {
                             ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
                         }
                     },
+                    validator_default_impl,
+                    validator_default_generics,
                 )
             }
             None => {
@@ -149,7 +161,7 @@ impl<'a> BuilderFunctions<'a> {
                 };
                 (
                     quote! {
-                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>
+                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption, ValidatorDefault>
                     },
                     quote! {
                         #builder_name {
@@ -157,12 +169,14 @@ impl<'a> BuilderFunctions<'a> {
                             #(#builder_fields),*
                         }
                     },
+                    quote! {ValidatorDefault},
+                    quote! {ValidatorDefault},
                 )
             }
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
+            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption, #validator_default_impl> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption, #validator_default_generics>
                 #where_clause
             {
                 #(#documents)*

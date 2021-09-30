@@ -1,4 +1,4 @@
-use crate::attributes::FieldAttributes;
+use crate::attributes::{FieldAttributes, Setters};
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -47,8 +47,8 @@ impl Parse for StructInput {
             unimplemented!("Only structures are supported!");
         };
 
-        let mut optional_fields: Vec<Field> = Vec::new();
-        let mut required_fields: Vec<Field> = Vec::new();
+        let mut optional_fields = vec![];
+        let mut required_fields = vec![];
         for f in fields.named.into_iter() {
             let attrs: FieldAttributes = f.attrs.into();
             let fields = if attrs.default.is_some() {
@@ -68,6 +68,16 @@ impl Parse for StructInput {
         // Sort by ident.
         optional_fields.sort();
         required_fields.sort();
+        let mut having_default_value_with_validator = vec![];
+        let mut index = 0;
+        optional_fields.iter().for_each(|f| {
+            if let Some((_, s)) = f.attrs.default {
+                if s == Setters::VALUE && f.attrs.validator.is_some() {
+                    having_default_value_with_validator.push(index);
+                }
+            }
+            index += 1;
+        });
 
         Ok(StructInput {
             vis,

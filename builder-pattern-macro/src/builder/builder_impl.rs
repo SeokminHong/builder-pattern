@@ -91,7 +91,8 @@ impl<'a> BuilderImpl<'a> {
                 let ident = &f.ident;
                 struct_init_args.push(ident.to_token_stream());
                 if f.attrs.validator.is_some()
-                    && !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
+                    && (!(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
+                        || f.attrs.default.is_some())
                 {
                     let async_case = if is_async {
                         quote! {
@@ -154,9 +155,16 @@ impl<'a> BuilderImpl<'a> {
             (None, quote! {()})
         };
         tokens.extend(quote! {
-        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ()>
-            #where_clause
+            impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <
+                #fn_lifetime,
+                #(#lifetimes,)*
+                #ty_tokens
+                #(#satisfied_generics),*,
+                #async_generic,
+                (),
+                ::builder_pattern::list::Nil
+            >
+                #where_clause
             {
                 #[allow(dead_code)]
                 #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
@@ -170,8 +178,15 @@ impl<'a> BuilderImpl<'a> {
         });
 
         tokens.extend(quote!{
-        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ::builder_pattern::setter::HavingAsyncValidator>
+        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)* ConsType> #builder_name <
+            #fn_lifetime,
+            #(#lifetimes,)*
+            #ty_tokens
+            #(#satisfied_generics),*,
+            #async_generic,
+            ::builder_pattern::setter::HavingAsyncValidator,
+            ::builder_pattern::list::Cons<ConsType>
+        >
             #where_clause
             {
                 #[allow(dead_code)]
