@@ -69,7 +69,7 @@ jobs:
             elif [[ $result -ne 0 ]]; then
               exit 1
             fi
-          done
+          done;
 
   # Only test docs for Ubuntu.
   doc_tests:
