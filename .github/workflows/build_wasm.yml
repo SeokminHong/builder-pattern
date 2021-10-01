@@ -19,7 +19,11 @@ jobs:
           target: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v1
 
-      - name: Run check
+      - name: Run all examples
         run: |
-          cd builder-pattern/examples
-          cargo check --all-targets
+          cd builder-pattern
+          for example in examples/*.rs
+          do
+            e=${example##*/}
+            cargo run --example ${e%.*}
+          done

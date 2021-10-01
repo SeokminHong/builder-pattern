@@ -20,5 +20,8 @@ jobs:
 
       - name: Run check
         run: |
-          cd builder-pattern/examples
-          cargo check --all-targets
+          cd builder-pattern
+          Get-ChildItem examples -Filter *.rs |
+          Foreach-Object {
+            cargo run --example $_.BaseName
+          }
