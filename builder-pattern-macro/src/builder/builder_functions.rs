@@ -21,7 +21,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 let ident = &f.ident;
                 quote! { #ident: self.#ident }
             })
-            .collect::<Vec<TokenStream>>();
+            .collect::<Vec<_>>();
 
         let mut index = 0;
         self.input
@@ -79,7 +79,7 @@ impl<'a> BuilderFunctions<'a> {
         f: &Field,
         index: usize,
     ) -> (Vec<TokenStream>, Vec<TokenStream>, Vec<TokenStream>) {
-        let all_generics = self.input.all_generics().collect::<Vec<TokenStream>>();
+        let all_generics = self.input.all_generics().collect::<Vec<_>>();
         let ty = &f.ty;
         let mut other_generics = all_generics.clone();
         other_generics.remove(index);

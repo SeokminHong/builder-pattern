@@ -23,7 +23,7 @@ impl<'a> ToTokens for BuilderDecl<'a> {
         let where_clause = &self.input.generics.where_clause;
 
         let impl_tokens = self.input.tokenize_impl();
-        let all_generics = self.input.all_generics().collect::<Vec<TokenStream>>();
+        let all_generics = self.input.all_generics().collect::<Vec<_>>();
         let ty_tokens = self.input.tokenize_types();
 
         let fn_lifetime = self.input.fn_lifetime();

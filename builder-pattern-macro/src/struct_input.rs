@@ -119,7 +119,7 @@ impl StructInput {
             .lifetimes()
             // Remove bounds
             .map(|f| f.lifetime.to_token_stream())
-            .collect::<Vec<TokenStream>>()
+            .collect()
     }
 
     /// An iterator for generics like [U1, U2, ...].
