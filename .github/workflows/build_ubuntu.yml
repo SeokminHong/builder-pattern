@@ -54,6 +54,23 @@ jobs:
             cargo run --example ${e%.*}
           done
 
+      - name: Run no-future examples
+        run: |
+          cd test-no-future
+          for example in examples/*.rs
+          do
+            e=${example##*/}
+            cargo run --example ${e%.*}
+            result=$?
+            if [[ $e == fail-* ]]; then
+              if [[ $result -eq 0 ]]; then
+                echo "Error: example '$e' should fail!"
+                exit 1
+            elif [[ $result -ne 0 ]]; then
+              exit 1
+            fi
+          done
+
   # Only test docs for Ubuntu.
   doc_tests:
     name: Documentation Tests

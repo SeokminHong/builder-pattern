@@ -2,4 +2,5 @@
 members = [
     "builder-pattern",
     "builder-pattern-macro",
+    "test-no-future",
 ]
