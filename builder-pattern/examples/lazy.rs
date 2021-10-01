@@ -33,11 +33,11 @@ async fn main() {
     println!("{:?}", a);
     assert_eq!(
         a,
-        Ok(Person {
+        Person {
             name: String::from("Jack"),
             age: 30,
             address: "Seoul"
-        })
+        }
     );
 
     let b_surname = "Johanson";
