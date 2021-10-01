@@ -18,10 +18,14 @@ jobs:
           profile: minimal
       - uses: Swatinem/rust-cache@v1
 
-      - name: Run check
+      - name: Run all examples
         run: |
           cd builder-pattern
           Get-ChildItem examples -Filter *.rs |
           Foreach-Object {
             cargo run --example $_.BaseName
+            if ($?) {
+              $Host.SetShouldExit($?)
+              exit
+            }
           }
