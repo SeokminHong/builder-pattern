@@ -1,5 +1,5 @@
 use builder_pattern::Builder;
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 #[derive(Builder, Debug, PartialEq)]
 struct Test {

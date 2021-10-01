@@ -5,7 +5,7 @@ use crate::builder::{
 use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
-use std::str::FromStr;
+use core::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};

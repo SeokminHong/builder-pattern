@@ -213,7 +213,7 @@
 //! Generated code:
 //!
 //! ```
-//! # use std::marker::PhantomData;
+//! # use core::marker::PhantomData;
 //! # struct Test {
 //! #     pub positive: i32,
 //! #     pub zero: i32,
@@ -314,7 +314,7 @@
 //! will generates:
 //!
 //! ```
-//! # use ::std::marker::PhantomData;
+//! # use ::core::marker::PhantomData;
 //! # enum Gender {
 //! #     Male,
 //! #     Female,

@@ -1,8 +1,8 @@
 use crate::{attributes::Setters, field::Field, struct_input::StructInput};
 
+use core::str::FromStr;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
-use std::str::FromStr;
 use syn::spanned::Spanned;
 use syn::{parse_quote, Attribute};
 
@@ -126,17 +126,17 @@ impl<'a> BuilderFunctions<'a> {
                 };
                 (
                     quote! {
-                        ::std::result::Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>, String>
+                        Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>, String>
                     },
                     quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
                         match #v (value.into()) {
-                            ::std::result::Result::Ok(value) => ::std::result::Result::Ok(
+                            Ok(value) => Ok(
                                 #builder_name {
-                                    _phantom: ::std::marker::PhantomData,
+                                    _phantom: ::core::marker::PhantomData,
                                     #(#builder_fields),*
                                 }),
-                            ::std::result::Result::Err(e) => ::std::result::Result::Err(format!("Validation failed: {:?}", e))
+                            Err(e) => Err(format!("Validation failed: {:?}", e))
                         }
                     },
                 )
@@ -153,7 +153,7 @@ impl<'a> BuilderFunctions<'a> {
                     },
                     quote! {
                         #builder_name {
-                            _phantom: ::std::marker::PhantomData,
+                            _phantom: ::core::marker::PhantomData,
                             #(#builder_fields),*
                         }
                     },
@@ -198,21 +198,21 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
                     ::builder_pattern::setter::Setter::LazyValidated(
-                        std::boxed::Box::new(move || #v((value)()))
+                        Box::new(move || #v((value)()))
                     )
                 )
             },
             None => quote! {
                 #ident: Some(
                     ::builder_pattern::setter::Setter::Lazy(
-                        std::boxed::Box::new(value)
+                        Box::new(value)
                     )
                 )
             },
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::std::marker::PhantomData,
+                _phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };
@@ -257,7 +257,7 @@ impl<'a> BuilderFunctions<'a> {
         let ty_tokens = self.input.tokenize_types();
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = quote! {<
-            ReturnType: #fn_lifetime + ::std::future::Future<Output = #ty>,
+            ReturnType: #fn_lifetime + ::core::future::Future<Output = #ty>,
             ValType: #fn_lifetime + ::core::ops::Fn() -> ReturnType
         >};
         let arg_type = quote! {ValType};
@@ -267,8 +267,8 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
                     ::builder_pattern::setter::Setter::AsyncValidated(
-                        std::boxed::Box::new(move || {
-                            std::boxed::Box::pin(async move { #v((value)().await) })
+                        Box::new(move || {
+                            Box::pin(async move { #v((value)().await) })
                         })
                     )
                 )
@@ -276,14 +276,14 @@ impl<'a> BuilderFunctions<'a> {
             None => quote! {
                 #ident: Some(
                     ::builder_pattern::setter::Setter::Async(
-                        std::boxed::Box::new(move || std::boxed::Box::pin((value)()))
+                        Box::new(move || Box::pin((value)()))
                     )
                 )
             },
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::std::marker::PhantomData,
+                _phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };

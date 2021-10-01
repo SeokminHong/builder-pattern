@@ -1,8 +1,8 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
+use core::str::FromStr;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use std::str::FromStr;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
 /// Implementation for the given structure.
@@ -35,7 +35,7 @@ impl<'a> ToTokens for StructImpl<'a> {
                 #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, (), ()> {
                     #[allow(clippy::redundant_closure_call)]
                     #builder_name {
-                        _phantom: ::std::marker::PhantomData,
+                        _phantom: ::core::marker::PhantomData,
                         #(#builder_init_args),*
                     }
                 }
@@ -79,7 +79,7 @@ impl<'a> StructImpl<'a> {
                             quote_spanned! { expr.span() =>
                                 #ident: Some(
                                     ::builder_pattern::setter::Setter::Lazy(
-                                        std::boxed::Box::new(#expr)
+                                        Box::new(#expr)
                                     )
                                 )
                             }

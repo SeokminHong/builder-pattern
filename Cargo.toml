@@ -1,2 +1,5 @@
 [workspace]
-members = ["builder-pattern-macro", "builder-pattern"]
+members = [
+    "builder-pattern",
+    "builder-pattern-macro",
+]

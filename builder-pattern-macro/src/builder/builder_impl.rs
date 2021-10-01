@@ -1,8 +1,8 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
+use core::str::FromStr;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use std::str::FromStr;
 
 pub struct BuilderImpl<'a> {
     pub input: &'a StructInput,
@@ -174,7 +174,7 @@ impl<'a> BuilderImpl<'a> {
             #where_clause
             {
                 #[allow(dead_code)]
-                #vis #kw_async fn build(self) -> ::std::result::Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
+                #vis #kw_async fn build(self) -> Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
                     #(#init_fields)*
                     #(#validated_init_fields)*
                     Ok(
