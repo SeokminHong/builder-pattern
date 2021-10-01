@@ -24,8 +24,8 @@ jobs:
           Get-ChildItem examples -Filter *.rs |
           Foreach-Object {
             cargo run --example $_.BaseName
-            if ($?) {
-              $Host.SetShouldExit($?)
+            if ($LASTEXITCODE -ne 0) {
+              $Host.SetShouldExit($LASTEXITCODE)
               exit
             }
           }
