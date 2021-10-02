@@ -17,6 +17,7 @@
 //!     name: String,
 //!     age: i32,
 //!     #[default(Gender::Nonbinary)]
+//!     #[setter(value, async)]
 //!     gender: Gender,
 //! }
 //!
@@ -33,6 +34,20 @@
 //!     .name("Jack")               // PersonBuilder<String, i32, (), ...>
 //!     .gender(Gender::Male)       // PersonBuilder<String, i32, Gender, ...>
 //!     .build();                   // Person
+//!
+//! // Asynchronously evaluated
+//! # tokio_test::block_on(async {
+//! let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
+//!     .age(32)                    // PersonBuilder<(), i32, (), ...>
+//!     // `&str` is implicitly converted into `String`
+//!     // because of `into` attribute!
+//!     .name("Jack")               // PersonBuilder<String, i32, (), ...>
+//!     .gender_async(|| async {
+//!         Gender::Male
+//!     })                          // PersonBuilder<String, i32, Gender, ...>
+//!     .build()                    // Future<Person>
+//!     .await;                     // Person
+//! # });
 //! // cont
 //! ```
 //! ```compile_fail
@@ -53,7 +68,7 @@
 //! #     gender: Gender,
 //! # }
 //! // `name` field required - Compilation error.
-//! let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
+//! let p4 = Person::new()          // PersonBuilder<(), (), (), ...>
 //!     .age(15)                    // PersonBuilder<(), i32, (), ...>
 //!     .build();
 //! ```

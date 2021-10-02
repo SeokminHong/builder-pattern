@@ -38,8 +38,19 @@ let p2 = Person::new()          // PersonBuilder<(), (), ()>
     .gender(Gender::Male)       // PersonBuilder<String, i32, Gender>
     .build();                   // Person
 
+let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
+    .age(32)                    // PersonBuilder<(), i32, (), ...>
+    // `&str` is implicitly converted into `String`
+    // because of `into` attribute!
+    .name("Jack")               // PersonBuilder<String, i32, (), ...>
+    .gender_async(|| async {
+        Gender::Male
+    })                          // PersonBuilder<String, i32, Gender, ...>
+    .build()                    // Future<Person>
+    .await;                     // Person
+
 // `name` field required - Compilation error.
-let p3 = Person::new()          // PersonBuilder<(), (), ()>
+let p4 = Person::new()          // PersonBuilder<(), (), ()>
     .age(15)                    // PersonBuilder<(), i32, ()>
     .build();
 ```
