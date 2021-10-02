@@ -20,16 +20,8 @@ jobs:
 
       - name: Run all examples
         run: |
-          Set-Location builder-pattern
-          Get-ChildItem examples -Filter *.rs |
-          Foreach-Object {
-            cargo run --example $_.BaseName
-            if ($LASTEXITCODE -ne 0) {
-              $Host.SetShouldExit($LASTEXITCODE)
-              exit
-            }
-          }
+          ./scripts/test-no-future.ps1 builder-pattern
 
       - name: Run no-future examples
         run: |
-          ./scripts/test-no-future.ps1
+          ./scripts/test-no-future.ps1 test-no-future

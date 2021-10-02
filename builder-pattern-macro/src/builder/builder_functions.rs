@@ -98,8 +98,7 @@ impl<'a> BuilderFunctions<'a> {
         index: usize,
         builder_fields: &mut Vec<TokenStream>,
     ) {
-        let (ident, ty) = (&f.ident, &f.ty);
-        let vis = &self.input.vis;
+        let (ident, ty, vis) = (&f.ident, &f.ty, &f.vis);
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
@@ -180,9 +179,8 @@ impl<'a> BuilderFunctions<'a> {
         index: usize,
         builder_fields: &mut Vec<TokenStream>,
     ) {
-        let (ident, ty) = (&f.ident, &f.ty);
+        let (ident, ty, vis) = (&f.ident, &f.ty, &f.vis);
         let seter_name = Ident::new(&format!("{}_lazy", &ident.to_string()), Span::call_site());
-        let vis = &self.input.vis;
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
@@ -246,9 +244,8 @@ impl<'a> BuilderFunctions<'a> {
         index: usize,
         builder_fields: &mut Vec<TokenStream>,
     ) {
-        let (ident, ty) = (&f.ident, &f.ty);
+        let (ident, ty, vis) = (&f.ident, &f.ty, &f.vis);
         let seter_name = Ident::new(&format!("{}_async", &ident.to_string()), Span::call_site());
-        let vis = &self.input.vis;
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();

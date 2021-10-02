@@ -6,7 +6,6 @@ mod test {
     pub struct PublicTest {
         pub a: i32,
         pub b: Option<i32>,
-        #[default(1.234)]
         c: f64,
     }
 }
@@ -14,6 +13,10 @@ mod test {
 use test::*;
 
 pub fn main() {
-    let t1 = PublicTest::new().a(333).b(Some(123)).build();
+    let t1 = PublicTest::new()
+        .a(333)
+        .b(Some(123))
+        .c(1.234) // Cannot access `c` because it is private.
+        .build();
     println!("{:?}", t1);
 }

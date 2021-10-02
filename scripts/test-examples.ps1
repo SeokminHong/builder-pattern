@@ -1,5 +1,6 @@
+$test = ($args[0])
+Push-Location $PSScriptRoot\..\$test\
 $ErrorActionPreference = 'SilentlyContinue'
-Push-Location $PSScriptRoot\..\test-no-future\
 Get-ChildItem examples -Filter *.rs |
 Foreach-Object {
   cargo run --example $_.BaseName

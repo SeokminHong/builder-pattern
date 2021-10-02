@@ -47,16 +47,11 @@ jobs:
 
       - name: Run all examples
         run: |
-          cd builder-pattern
-          for example in examples/*.rs
-          do
-            e=${example##*/}
-            cargo run --example ${e%.*}
-          done
+          ./scripts/test-no-future.sh builder-pattern
 
       - name: Run no-future examples
         run: |
-          ./scripts/test-no-future.sh
+          ./scripts/test-no-future.sh test-no-future
 
   # Only test docs for Ubuntu.
   doc_tests:
