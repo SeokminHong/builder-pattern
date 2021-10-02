@@ -19,6 +19,7 @@ futures = { version = "0.3", optional = true }
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tokio-test = "0.4"
 
 [features]
 default = ["future"]

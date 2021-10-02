@@ -146,7 +146,7 @@ let p1 = Person::new()
     .age(15)
     .address_lazy(|| "123 Main St")
     .build()  // `address` is validated here
-    .await(); // `name` is validated here
+    .await; // `name` is validated here
 ```
 
 ### `#[into]`
@@ -264,7 +264,7 @@ impl Test {
     /// An integer having zero as a default value.
     fn new() -> TestBuilder<(), ()> {
         TestBuilder {
-            _phatom: PhantomData,
+            _phantom: PhantomData,
             positive: None,
             zero: Some(0),
         }
@@ -273,7 +273,7 @@ impl Test {
 
 /// A builder for `Test`.
 struct TestBuilder<T1, T2> {
-    _phatom: PhantomData<(T1, T2)>,
+    _phantom: PhantomData<(T1, T2)>,
     positive: Option<i32>,
     zero: Option<i32>,
 }
@@ -294,8 +294,8 @@ impl<T2> TestBuilder<(), T2> {
     /// A positive integer.
     pub fn positive(self, value: i32) -> TestBuilder<i32, T2> {
         TestBuilder {
-            _phatom: PhantomData,
-            positive: Some(value),
+            _phantom: PhantomData,
+            positive: Some(Setter::Value(value)),
             zero: self.zero,
         }
     }
@@ -309,9 +309,9 @@ impl<T1> TestBuilder<T1, ()> {
     /// An integer having zero as a default value.
     pub fn zero(self, value: i32) -> TestBuilder<T1, i32> {
         TestBuilder {
-            _phatom: PhantomData,
+            _phantom: PhantomData,
             positive: self.positive,
-            zero: Some(value),
+            zero: Some(Setter::Value(value)),
         }
     }
 }

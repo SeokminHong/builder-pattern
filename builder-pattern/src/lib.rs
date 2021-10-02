@@ -77,9 +77,10 @@
 //! as a default value of the field. `build` function can be called without providing this field.
 //!
 //! ```
+//! # use builder_pattern::Builder;
 //! #[derive(Builder)]
 //! struct Test {
-//!     #[default]
+//!     #[default(5)]
 //!     pub a: i32,
 //!     pub b: &'static str,
 //! }
@@ -94,6 +95,8 @@
 //! a function or a closure having no arguments.
 //!
 //! ```
+//! # use builder_pattern::Builder;
+//! # fn some_heavy_task() -> i32 { 3 }
 //! #[derive(Builder)]
 //! struct Test {
 //!     #[default_lazy(|| some_heavy_task() + 3)]
@@ -154,6 +157,7 @@
 //! If it doesn't, only the value setter is provided.
 //!
 //! ```
+//! # use builder_pattern::Builder;
 //! #[derive(Builder, Debug)]
 //! struct Person {
 //!     // All kinds of setters are provided.
@@ -166,12 +170,14 @@
 //!     address: &'static str,
 //! }
 //!
+//! # tokio_test::block_on(async {
 //! let p1 = Person::new()
 //!     .name_async(|| async { String::from("Joe") })
 //!     .age(15)
 //!     .address_lazy(|| "123 Main St")
 //!     .build()  // `address` is validated here
-//!     .await(); // `name` is validated here
+//!     .await; // `name` is validated here
+//! # });
 //! ```
 //!
 //! ### `#[into]`
@@ -218,10 +224,10 @@
 //!     }
 //! }
 //!
-//! let test1 = Test::new()         // TestBuilder<(), ...>
-//!     .name("Hello")              // Ok(TestBuilder<String, ...>)
-//!     .unwrap()                   // TestBuilder<String, ...>
-//!     .build();                   // Test
+//! let test1 = Test::new()          // TestBuilder<(), ...>
+//!     .name(String::from("Hello")) // Ok(TestBuilder<String, ...>)
+//!     .unwrap()                    // TestBuilder<String, ...>
+//!     .build();                    // Test
 //! # // cont
 //! ```
 //! ```should_panic
@@ -260,7 +266,7 @@
 //!     #[setter(lazy, async)]
 //!     pub name: &'static str,
 //! }
-//! # fn is_not_empty(name: String) -> Result<String, &'static str> {
+//! # fn is_not_empty(name: &'static str) -> Result<&'static str, &'static str> {
 //! #     if name.is_empty() {
 //! #         Err("Name cannot be empty.")
 //! #     } else {
@@ -270,17 +276,17 @@
 //! #
 //!
 //! let test1 = Test::new()         // TestBuilder<(), ...>
-//!     .name_lazy("Hello")         // TestBuilder<String, ...>
+//!     .name_lazy(|| "Hello")         // TestBuilder<String, ...>
 //!     .build()                    // Ok(Test)
 //!     .unwrap();                  // Test
 //!
+//! # tokio_test::block_on(async {
 //! let test2 = Test::new()         // TestBuilder<(), ...>
-//!     .name_async(|| async {
-//!         "Hello".to_string()
-//!     })                          // TestBuilder<String, ...>
+//!     .name_async(|| async { "Hello" }) // TestBuilder<String, ...>
 //!     .build()                    // Future<Result<Test, String>>
 //!     .await                      // Ok(Test)
 //!     .unwrap();                  // Test
+//! # });
 //! ```
 //!
 //! ## Auto-Generated Documentation
@@ -330,7 +336,7 @@
 //!     /// An integer having zero as a default value.
 //!     fn new<'a>() -> TestBuilder<'a, (), (), (), ()> {
 //!         TestBuilder {
-//!             _phatom: PhantomData,
+//!             _phantom: PhantomData,
 //!             positive: None,
 //!             zero: Some(Setter::Value(0)),
 //!         }
@@ -367,8 +373,8 @@
 //!         value: i32
 //!     ) -> TestBuilder<'a, i32, T2, AsyncFieldMarker, ValidatorOption> {
 //!         TestBuilder {
-//!             _phatom: PhantomData,
-//!             positive: Some(value),
+//!             _phantom: PhantomData,
+//!             positive: Some(Setter::Value(value)),
 //!             zero: self.zero,
 //!         }
 //!     }
@@ -387,9 +393,9 @@
 //!         value: i32
 //!     ) -> TestBuilder<'a, T1, i32, AsyncFieldMarker, ValidatorOption> {
 //!         TestBuilder {
-//!             _phatom: PhantomData,
+//!             _phantom: PhantomData,
 //!             positive: self.positive,
-//!             zero: Some(value),
+//!             zero: Some(Setter::Value(value)),
 //!         }
 //!     }
 //! }
