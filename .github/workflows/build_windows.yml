@@ -29,3 +29,7 @@ jobs:
               exit
             }
           }
+
+      - name: Run no-future examples
+        run: |
+          ./scripts/test-no-future.ps1
