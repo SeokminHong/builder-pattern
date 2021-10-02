@@ -23,18 +23,25 @@ impl<'a> ToTokens for BuilderDecl<'a> {
         let where_clause = &self.input.generics.where_clause;
 
         let impl_tokens = self.input.tokenize_impl();
-        let all_generics = self.input.all_generics().collect::<Vec<TokenStream>>();
+        let all_generics = self.input.all_generics().collect::<Vec<_>>();
         let ty_tokens = self.input.tokenize_types();
 
-        let builder_fields = self.input.builder_fields();
+        let fn_lifetime = self.input.fn_lifetime();
+        let builder_fields = self.input.builder_fields(&fn_lifetime);
 
         let docs = format!(" A builder for `{}`.", ident);
         let docs: TokenStream = parse_quote!(#[doc=#docs]);
 
         tokens.extend(quote! {
             #docs
-            #vis struct #builder_name <#impl_tokens #(#all_generics),*> #where_clause {
-                _phantom: ::std::marker::PhantomData<(#ty_tokens #(#all_generics),*)>,
+            #vis struct #builder_name<
+                #fn_lifetime,
+                #impl_tokens
+                #(#all_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            > #where_clause {
+                _phantom: ::core::marker::PhantomData<(#ty_tokens #(#all_generics,)* AsyncFieldMarker, ValidatorOption)>,
                 #(#builder_fields),*
             }
         });

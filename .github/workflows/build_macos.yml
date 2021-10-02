@@ -18,7 +18,10 @@ jobs:
           profile: minimal
       - uses: Swatinem/rust-cache@v1
 
-      - name: Run check
+      - name: Run all examples
         run: |
-          cd examples
-          cargo check --all-targets
+          ./scripts/test-examples.sh builder-pattern
+
+      - name: Run no-future examples
+        run: |
+          ./scripts/test-examples.sh test-no-future

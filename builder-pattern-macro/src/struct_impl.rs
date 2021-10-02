@@ -1,8 +1,8 @@
-use crate::struct_input::StructInput;
+use crate::{attributes::Setters, struct_input::StructInput};
 
+use core::str::FromStr;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use std::str::FromStr;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
 /// Implementation for the given structure.
@@ -23,15 +23,19 @@ impl<'a> ToTokens for StructImpl<'a> {
         let empty_generics = self.empty_generics();
         let ty_tokens = self.input.tokenize_types();
 
+        let fn_lifetime = self.input.fn_lifetime();
+
         let builder_init_args = self.builder_init_args();
         let docs = self.documents();
 
         tokens.extend(quote! {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #(#docs)*
-                #vis fn new() -> #builder_name<#(#lifetimes,)* #ty_tokens #(#empty_generics),*> {
+                #[allow(clippy::new_ret_no_self)]
+                #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, (), ()> {
+                    #[allow(clippy::redundant_closure_call)]
                     #builder_name {
-                        _phantom: ::std::marker::PhantomData,
+                        _phantom: ::core::marker::PhantomData,
                         #(#builder_init_args),*
                     }
                 }
@@ -54,8 +58,9 @@ impl<'a> StructImpl<'a> {
 
     /// An iterator for initialize arguments of the builder.
     /// Required fields are filled with `None`, optional fields are filled with given value via `default` attribute.
-    fn builder_init_args(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        self.input
+    fn builder_init_args(&self) -> Vec<TokenStream> {
+        let v = self
+            .input
             .required_fields
             .iter()
             .map(|f| {
@@ -65,11 +70,28 @@ impl<'a> StructImpl<'a> {
                 }
             })
             .chain(self.input.optional_fields.iter().map(|f| {
-                let (ident, expr) = (&f.ident, &f.attrs.default.as_ref());
-                quote_spanned! { expr.span() =>
-                    #ident: Some(#expr)
+                if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
+                    match *setters {
+                        Setters::VALUE => quote_spanned! { expr.span() =>
+                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                        },
+                        Setters::LAZY => {
+                            quote_spanned! { expr.span() =>
+                                #ident: Some(
+                                    ::builder_pattern::setter::Setter::Lazy(
+                                        Box::new(#expr)
+                                    )
+                                )
+                            }
+                        }
+                        _ => unimplemented!(),
+                    }
+                } else {
+                    unimplemented!()
                 }
             }))
+            .collect::<Vec<_>>();
+        v
     }
 
     fn documents(&self) -> Vec<Attribute> {
@@ -92,7 +114,7 @@ impl<'a> StructImpl<'a> {
             docs.push(parse_quote!(#[doc=" ## Optional Fields"]));
             for f in self.input.optional_fields.iter() {
                 let ident = &f.ident;
-                let default = f
+                let (expr, _) = f
                     .attrs
                     .default
                     .as_ref()
@@ -102,7 +124,7 @@ impl<'a> StructImpl<'a> {
                     " ### `{}`\n - Type: `{}`\n - Default: `{}`\n\n",
                     ident,
                     f.type_documents(),
-                    default.into_token_stream()
+                    expr.into_token_stream()
                 );
                 docs.push(parse_quote!(#[doc=#doc]));
                 docs.append(f.documents().as_mut());

@@ -1,8 +1,8 @@
 use super::attributes::FieldAttributes;
 
+use core::cmp::Ordering;
 use proc_macro2::Ident;
 use quote::ToTokens;
-use std::cmp::Ordering;
 use syn::{Attribute, Type, Visibility};
 
 pub struct Field {

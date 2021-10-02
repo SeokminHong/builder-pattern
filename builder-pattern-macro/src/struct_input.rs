@@ -1,17 +1,18 @@
 use crate::attributes::FieldAttributes;
 use crate::builder::{
-    builder_decl::BuilderDecl, builder_impl::BuilderImpl, functions::BuilderFunctions,
+    builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
 use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
-use std::str::FromStr;
+use core::str::FromStr;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{
-    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Token, Visibility,
+    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
+    Visibility,
 };
 
 pub struct StructInput {
@@ -99,9 +100,17 @@ impl ToTokens for StructInput {
 }
 
 impl StructInput {
+    pub fn num_fields(&self) -> usize {
+        self.required_fields.len() + self.optional_fields.len()
+    }
+
     /// Name of the builder structure.
     pub fn builder_name(&self) -> Ident {
         Ident::new(&format!("{}Builder", self.ident), Span::call_site())
+    }
+
+    pub fn fn_lifetime(&self) -> Lifetime {
+        Lifetime::new("'fn_lifetime", Span::call_site())
     }
 
     /// Get token stream for lifetimes.
@@ -110,28 +119,30 @@ impl StructInput {
             .lifetimes()
             // Remove bounds
             .map(|f| f.lifetime.to_token_stream())
-            .collect::<Vec<TokenStream>>()
+            .collect()
     }
 
     /// An iterator for generics like [U1, U2, ...].
     pub fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
-        (0..(self.required_fields.len() + self.optional_fields.len()))
+        (0..(self.num_fields()))
             .into_iter()
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
     }
 
     /// An iterator for fields of the builder.
-    pub fn builder_fields(&'_ self) -> impl '_ + Iterator<Item = TokenStream> {
-        let iters = self
-            .required_fields
+    pub fn builder_fields<'a>(
+        &'a self,
+        fn_lifetime: &'a Lifetime,
+    ) -> impl 'a + Iterator<Item = TokenStream> {
+        self.required_fields
             .iter()
-            .chain(self.optional_fields.iter());
-        iters.map(|f| {
-            let (ident, ty) = (&f.ident, &f.ty);
-            quote! {
-                #ident: Option<#ty>
-            }
-        })
+            .chain(self.optional_fields.iter())
+            .map(move |f| {
+                let (ident, ty) = (&f.ident, &f.ty);
+                quote! {
+                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
+                }
+            })
     }
 
     /// Tokenize type parameters.
