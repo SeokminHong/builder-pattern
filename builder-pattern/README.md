@@ -66,6 +66,14 @@ Add `builder-pattern` to `Cargo.toml`.
 builder-pattern = "0.4"
 ```
 
+The crate feature `future` is enabled by default. If you don't need asynchronous features, you can disable it.
+
+```toml
+# Cargo.toml
+[dependencies]
+builder-pattern = { version = "0.4", default-features = false }
+```
+
 ## Features
 
 - **Chaining**: Can make structure with chained setters.
