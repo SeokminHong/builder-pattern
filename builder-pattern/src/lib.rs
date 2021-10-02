@@ -48,10 +48,10 @@
 //!     .build()                    // Future<Person>
 //!     .await;                     // Person
 //! # });
-//! // cont
+//! # // cont
 //! ```
 //! ```compile_fail
-//! // cont
+//! # // cont
 //! # use builder_pattern::Builder;
 //! # enum Gender {
 //! #     Male,
