@@ -20,7 +20,7 @@ jobs:
 
       - name: Run all examples
         run: |
-          cd builder-pattern
+          Set-Location builder-pattern
           Get-ChildItem examples -Filter *.rs |
           Foreach-Object {
             cargo run --example $_.BaseName

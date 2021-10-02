@@ -9,9 +9,6 @@ Foreach-Object {
       $Host.SetShouldExit(1)
       Pop-Location
       exit
-    } else {
-      Write-Output 'Failed!'
-      $Host.SetShouldExit(0)
     }
   } else {
     if ($LASTEXITCODE -ne 0) {
