@@ -31,7 +31,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-targets -- -D warnings
+          args: -- -D warnings
 
   check_examples:
     name: Check Examples
@@ -47,11 +47,11 @@ jobs:
 
       - name: Run all examples
         run: |
-          ./scripts/test-no-future.sh builder-pattern
+          ./scripts/test-examples.sh builder-pattern
 
       - name: Run no-future examples
         run: |
-          ./scripts/test-no-future.sh test-no-future
+          ./scripts/test-examples.sh test-no-future
 
   # Only test docs for Ubuntu.
   doc_tests:
