@@ -21,6 +21,7 @@ struct Person {
     name: String,
     age: i32,
     #[default(Gender::Nonbinary)]
+    #[setter(value, async)]
     gender: Gender,
 }
 
