@@ -13,4 +13,4 @@ pub enum Setter<'a, T> {
 
 pub struct AsyncBuilderMarker {}
 
-pub struct HavingAsyncValidator {}
+pub struct HavingLazyValidator {}

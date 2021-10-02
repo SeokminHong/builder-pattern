@@ -10,7 +10,7 @@ homepage = "https://github.com/SeokminHong/builder-pattern"
 documentation = "https://docs.rs/builder-pattern"
 categories = ["development-tools", "rust-patterns"]
 keywords = ["builder", "pattern", "macro", "derive", "struct"]
-readme = "../README.md"
+readme = "README.md"
 
 [dependencies]
 builder-pattern-macro = { version = "0.4.0", path = "../builder-pattern-macro" }

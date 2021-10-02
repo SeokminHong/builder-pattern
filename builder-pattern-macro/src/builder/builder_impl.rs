@@ -168,22 +168,42 @@ impl<'a> BuilderImpl<'a> {
             }
         });
 
-        tokens.extend(quote!{
-        impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ::builder_pattern::setter::HavingAsyncValidator>
-            #where_clause
-            {
-                #[allow(dead_code)]
-                #vis #kw_async fn build(self) -> Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
-                    #(#init_fields)*
-                    #(#validated_init_fields)*
-                    Ok(
-                        #ident {
-                            #(#struct_init_args),*
-                        }
-                    )
+        // Check is there any validator may be evaluated lazily.
+        let mut having_lazy_validator = false;
+        self.input
+            .required_fields
+            .iter()
+            .chain(self.input.optional_fields.iter())
+            .for_each(|f| {
+                let default_setters = match f.attrs.default {
+                    Some((_, s)) => s,
+                    None => Setters::empty(),
+                };
+                let setters = f.attrs.setters | default_setters;
+                if f.attrs.validator.is_some()
+                    && !(setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
+                {
+                    having_lazy_validator = true;
                 }
-            }
-        });
+            });
+        if having_lazy_validator {
+            tokens.extend(quote!{
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
+                    <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ::builder_pattern::setter::HavingLazyValidator>
+                    #where_clause
+                {
+                    #[allow(dead_code)]
+                    #vis #kw_async fn build(self) -> Result<#ident <#(#lifetimes,)* #ty_tokens>, &'static str> {
+                        #(#init_fields)*
+                        #(#validated_init_fields)*
+                        Ok(
+                            #ident {
+                                #(#struct_init_args),*
+                            }
+                        )
+                    }
+                }
+            });
+        }
     }
 }

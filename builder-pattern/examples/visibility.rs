@@ -1,24 +1,12 @@
-mod vis_mod {
+mod test {
     use builder_pattern::Builder;
-    use std::borrow::Cow;
-
-    #[allow(dead_code)]
-    #[derive(Debug)]
-    pub enum MyEnum {
-        A,
-        B(i32),
-    }
 
     // Private structure
-    #[allow(dead_code)]
     #[derive(Builder, Debug)]
-    struct PrivateTest<'a, 'b: 'a, T: Sized, U>
-    where
-        U: Clone,
-    {
-        pub a: T,
-        pub b: Cow<'a, U>,
-        c: &'b &'static i32,
+    struct PrivateTest {
+        pub a: i32,
+        pub b: &'static str,
+        c: i32,
     }
 
     // Public structure
@@ -26,36 +14,24 @@ mod vis_mod {
     pub struct PublicTest {
         pub a: i32,
         pub b: Option<i32>,
-        c: MyEnum,
+        c: f64,
     }
 
     pub fn private_test() {
-        let a = PrivateTest::<i32, String>::new()
-            .a(5)
-            .b(Cow::Owned(String::from("Hello")))
-            .c(&&3)
-            .build();
+        let a = PrivateTest::new().a(5).b("Hello").c(3).build();
 
-        let b = PrivateTest::<i32, String>::new()
-            .c(&&4)
-            .b(Cow::Owned(String::from("foo")))
-            .a(3)
-            .build();
+        let b = PrivateTest::new().c(4).b("foo").a(3).build();
 
         println!("{:?}", a);
         println!("{:?}", b);
     }
 }
 
-use vis_mod::*;
+use test::*;
 
 pub fn main() {
-    let t1 = PublicTest::new()
-        .a(333)
-        .c(MyEnum::B(5123))
-        .b(Some(123))
-        .build();
+    let t1 = PublicTest::new().a(333).c(1.234).b(Some(123)).build();
     println!("{:?}", t1);
 
-    vis_mod::private_test();
+    test::private_test();
 }

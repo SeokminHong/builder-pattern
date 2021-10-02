@@ -1,18 +1,5 @@
-//! # builder-pattern
-//!
 //! A derivable macro for declaring a builder pattern.
 //! This crate is highly inspired by [derive_builder](https://crates.io/crates/derive-builder).
-//!
-//! ## Features
-//!
-//! - **Chaining**: Can make structure with chained setters.
-//! - **Complex types are supported**: Lifetime, trait bounds, and where clauses are well supported.
-//! - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build`
-//! function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
-//! - **Lazy evaluation and asynchronous**: Lazy evaluation and asynchronous are supported.
-//! The values will be evaluated when the structure is built.
-//! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
-//! - **Auto-generated documentation**: Documentation for the builder functions are automatically generated.
 //!
 //! ## Usage
 //!
@@ -33,22 +20,23 @@
 //!     gender: Gender,
 //! }
 //!
-//! let p1 = Person::new()          // PersonBuilder<(), (), ()>
-//!     .name(String::from("Joe"))  // PersonBuilder<String, (), ()>
-//!     .age(27)                    // PersonBuilder<String, i32, ()>
+//! let p1 = Person::new()          // PersonBuilder<(), (), (), ...>
+//!     .name(String::from("Joe"))  // PersonBuilder<String, (), (), ...>
+//!     .age(27)                    // PersonBuilder<String, i32, (), ...>
 //!     .build();                   // Person
 //!     
 //! // Order does not matter.
-//! let p2 = Person::new()          // PersonBuilder<(), (), ()>
-//!     .age(32)                    // PersonBuilder<(), i32, ()>
+//! let p2 = Person::new()          // PersonBuilder<(), (), (), ...>
+//!     .age(32)                    // PersonBuilder<(), i32, (), ...>
 //!     // `&str` is implicitly converted into `String`
 //!     // because of `into` attribute!
-//!     .name("Jack")               // PersonBuilder<String, i32, ()>
-//!     .gender(Gender::Male)       // PersonBuilder<String, i32, Gender>
+//!     .name("Jack")               // PersonBuilder<String, i32, (), ...>
+//!     .gender(Gender::Male)       // PersonBuilder<String, i32, Gender, ...>
 //!     .build();                   // Person
+//! // cont
 //! ```
-//!
 //! ```compile_fail
+//! // cont
 //! # use builder_pattern::Builder;
 //! # enum Gender {
 //! #     Male,
@@ -65,10 +53,21 @@
 //! #     gender: Gender,
 //! # }
 //! // `name` field required - Compilation error.
-//! let p3 = Person::new()          // PersonBuilder<(), (), ()>
-//!     .age(15)                    // PersonBuilder<(), i32, ()>
+//! let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
+//!     .age(15)                    // PersonBuilder<(), i32, (), ...>
 //!     .build();
 //! ```
+//!
+//! ## Features
+//!
+//! - **Chaining**: Can make structure with chained setters.
+//! - **Complex types are supported**: Lifetime, trait bounds, and where clauses are well supported.
+//! - **Type safety**: Autocompletion tools can suggest correct setters to build the struct. Also, `build`
+//! function is allowed only the all of required fields are provided. **No Result**, **No Unwrap**. Just use it.
+//! - **Lazy evaluation and asynchronous**: Lazy evaluation and asynchronous are supported.
+//! The values will be evaluated when the structure is built.
+//! - **No additional tasks**: There's no additional constraints to use the macro. Any structures and fields are allowed.
+//! - **Auto-generated documentation**: Documentation for the builder functions are automatically generated.
 //!
 //! ## Attributes
 //!
@@ -77,11 +76,41 @@
 //! A field having this attribute will be considered as optional, and the `expr` will be evaluated
 //! as a default value of the field. `build` function can be called without providing this field.
 //!
+//! ```
+//! #[derive(Builder)]
+//! struct Test {
+//!     #[default]
+//!     pub a: i32,
+//!     pub b: &'static str,
+//! }
+//!
+//! let t1 = Test::new().b("Hello").build(); // The structure can be built without `a`.
+//! let t2 = Test::new().b("Hi").a(3).build();
+//! ```
+//! ### `#[default_lazy(expr)]`
+//!
+//! A field having this attribute will be considered as optional, and the `expr`
+//! will be lazily evaluated as a default value of the field. `expr` should be
+//! a function or a closure having no arguments.
+//!
+//! ```
+//! #[derive(Builder)]
+//! struct Test {
+//!     #[default_lazy(|| some_heavy_task() + 3)]
+//!     pub a: i32,
+//!     #[default_lazy(some_heavy_task)]
+//!     pub b: i32,
+//! }
+//!
+//! // The structure can be built without `a` and `b`.
+//! let t1 = Test::new().build();
+//! let t2 = Test::new().a(3).build();
+//! ```
 //!
 //! ### `#[hidden]`
 //!
 //! If this attribute is present, the builder function would not be generated for the field.
-//! This field requires `default` attribute.
+//! This field requires `default` or `default_lazy` attribute.
 //!
 //! Example:
 //!
@@ -99,11 +128,13 @@
 //! let test1 = Test::new()         // TestBuilder<(), ()>
 //!     .name(String::from("Joe"))  // TestBuilder<String, ()>
 //!     .build();                   // Test
+//! # // cont
 //! ```
 //! ```compile_fail
+//! # // cont
 //! # use builder_pattern::Builder;
 //! # use uuid::Uuid;
-//! #[derive(Builder)]
+//! # #[derive(Builder)]
 //! # struct Test {
 //! #     #[default(Uuid::new_v4())]
 //! #     #[hidden]
@@ -117,10 +148,37 @@
 //!     .build();
 //! ```
 //!
+//! ### `#[setter(value | lazy | async)]`
+//!
+//! If this attribute presents, it provides specified setters.
+//! If it doesn't, only the value setter is provided.
+//!
+//! ```
+//! #[derive(Builder, Debug)]
+//! struct Person {
+//!     // All kinds of setters are provided.
+//!     #[setter(value, lazy, async)]
+//!     name: String,
+//!     // Only value setter is provided.
+//!     age: u8,
+//!     // Only lazy setter is provided.
+//!     #[setter(lazy)]
+//!     address: &'static str,
+//! }
+//!
+//! let p1 = Person::new()
+//!     .name_async(|| async { String::from("Joe") })
+//!     .age(15)
+//!     .address_lazy(|| "123 Main St")
+//!     .build()  // `address` is validated here
+//!     .await(); // `name` is validated here
+//! ```
+//!
 //! ### `#[into]`
 //!
-//! A setter function for a field having this attribute will accept `Into` trait as a parameter.
-//! You can use this setter with implicit conversion.
+//! A setter function for a field having this attribute will accept `Into`
+//! trait as a parameter. You can use this setter with implicit conversion.
+//! Currently, it cannot be used with async or lazy setters.
 //!
 //! Example:
 //!
@@ -132,9 +190,9 @@
 //!     pub name: String,
 //! }
 //!
-//! let test = Test::new()          // TestBuilder<()>
+//! let test = Test::new()          // TestBuilder<(), ...>
 //!     // `&str` is implicitly converted into `String`.
-//!     .name("Hello")              // TestBuilder<String>
+//!     .name("Hello")              // TestBuilder<String, ...>
 //!     .build();                   // Test
 //! ```
 //!
@@ -160,12 +218,14 @@
 //!     }
 //! }
 //!
-//! let test1 = Test::new()         // TestBuilder<()>
-//!     .name("Hello")              // Ok(TestBuilder<String>)
-//!     .unwrap()                   // TestBuilder<String>
+//! let test1 = Test::new()         // TestBuilder<(), ...>
+//!     .name("Hello")              // Ok(TestBuilder<String, ...>)
+//!     .unwrap()                   // TestBuilder<String, ...>
 //!     .build();                   // Test
+//! # // cont
 //! ```
 //! ```should_panic
+//! # // cont
 //! # use builder_pattern::Builder;
 //! # #[derive(Builder)]
 //! # struct Test {
@@ -182,10 +242,45 @@
 //! #     }
 //! # }
 //! #
-//! let test2 = Test::new()         // TestBuilder<()>
-//!     .name("")                   // Err(String{ "Validation failed: Name cannot be empty." })
-//!     .unwrap()                   // panic!
+//! let test2 = Test::new() // TestBuilder<()>
+//!     .name("")           // Err(String{ "Validation failed: Name cannot be empty." })
+//!     .unwrap()           // panic!
 //!     .build();
+//! ```
+//!
+//! If a `validator` is used with `lazy` or `async` setters,
+//! it will also validated lazily or asynchronously. So, the
+//! setter doesn't return `Result` but it is returned when it is built.
+//!
+//! ```
+//! # use builder_pattern::Builder;
+//! #[derive(Builder)]
+//! struct Test {
+//!     #[validator(is_not_empty)]
+//!     #[setter(lazy, async)]
+//!     pub name: &'static str,
+//! }
+//! # fn is_not_empty(name: String) -> Result<String, &'static str> {
+//! #     if name.is_empty() {
+//! #         Err("Name cannot be empty.")
+//! #     } else {
+//! #         Ok(name)
+//! #     }
+//! # }
+//! #
+//!
+//! let test1 = Test::new()         // TestBuilder<(), ...>
+//!     .name_lazy("Hello")         // TestBuilder<String, ...>
+//!     .build()                    // Ok(Test)
+//!     .unwrap();                  // Test
+//!
+//! let test2 = Test::new()         // TestBuilder<(), ...>
+//!     .name_async(|| async {
+//!         "Hello".to_string()
+//!     })                          // TestBuilder<String, ...>
+//!     .build()                    // Future<Result<Test, String>>
+//!     .await                      // Ok(Test)
+//!     .unwrap();                  // Test
 //! ```
 //!
 //! ## Auto-Generated Documentation
@@ -214,6 +309,7 @@
 //!
 //! ```
 //! # use core::marker::PhantomData;
+//! # use builder_pattern::setter::*;
 //! # struct Test {
 //! #     pub positive: i32,
 //! #     pub zero: i32,
@@ -232,37 +328,44 @@
 //!     /// - Default: `0`
 //!     ///
 //!     /// An integer having zero as a default value.
-//!     fn new() -> TestBuilder<(), ()> {
+//!     fn new<'a>() -> TestBuilder<'a, (), (), (), ()> {
 //!         TestBuilder {
 //!             _phatom: PhantomData,
 //!             positive: None,
-//!             zero: Some(0),
+//!             zero: Some(Setter::Value(0)),
 //!         }
 //!     }
 //! }
 //!
 //! /// A builder for `Test`.
-//! struct TestBuilder<T1, T2> {
-//!     _phatom: PhantomData<(T1, T2)>,
-//!     positive: Option<i32>,
-//!     zero: Option<i32>,
+//! struct TestBuilder<
+//!     'a,
+//!     T1,
+//!     T2,
+//!     AsyncFieldMarker,
+//!     ValidatorOption,
+//! > {
+//!     _phantom: PhantomData<(
+//!         T1,
+//!         T2,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     )>,
+//!     positive: Option<Setter<'a, i32>>,
+//!     zero: Option<Setter<'a, i32>>,
 //! }
 //!
-//! impl TestBuilder<i32, i32> {
-//!     fn build(self) -> Test {
-//!         Test {
-//!             positive: self.positive.unwrap(),
-//!             zero: self.zero.unwrap(),
-//!         }
-//!     }
-//! }
-//!
-//! impl<T2> TestBuilder<(), T2> {
+//! impl<'a, T2, AsyncFieldMarker, ValidatorOption>
+//!     TestBuilder<'a, (), T2, AsyncFieldMarker, ValidatorOption>
+//! {
 //!     /// # positive
 //!     /// - Type: `i32`
 //!     ///
 //!     /// A positive integer.
-//!     pub fn positive(self, value: i32) -> TestBuilder<i32, T2> {
+//!     pub fn positive(
+//!         self,
+//!         value: i32
+//!     ) -> TestBuilder<'a, i32, T2, AsyncFieldMarker, ValidatorOption> {
 //!         TestBuilder {
 //!             _phatom: PhantomData,
 //!             positive: Some(value),
@@ -271,13 +374,18 @@
 //!     }
 //! }
 //!
-//! impl<T1> TestBuilder<T1, ()> {
+//! impl<'a, T1, AsyncFieldMarker, ValidatorOption>
+//!     TestBuilder<'a, T1, (), AsyncFieldMarker, ValidatorOption>
+//! {
 //!     /// # zero
 //!     /// - Type: `i32`
 //!     /// - Default: `0`
 //!     ///
 //!     /// An integer having zero as a default value.
-//!     pub fn zero(self, value: i32) -> TestBuilder<T1, i32> {
+//!     pub fn zero(
+//!         self,
+//!         value: i32
+//!     ) -> TestBuilder<'a, T1, i32, AsyncFieldMarker, ValidatorOption> {
 //!         TestBuilder {
 //!             _phatom: PhantomData,
 //!             positive: self.positive,
@@ -314,91 +422,148 @@
 //! will generates:
 //!
 //! ```
-//! # use ::core::marker::PhantomData;
+//! # use core::marker::PhantomData;
+//! # use builder_pattern::setter::*;
 //! # enum Gender {
 //! #     Male,
 //! #     Female,
 //! #     Nonbinary
+//! # }
+//! # fn is_not_empty(val: String) -> Result<String, ()> {
+//! #    Ok(val)
 //! # }
 //! # struct Person {
 //! #     name: String,
 //! #     age: i32,
 //! #     gender: Gender,
 //! # }
-//! # fn is_not_empty(val: String) -> Result<String, ()> {
-//! #    Ok(val)
-//! # }
-//! struct PersonBuilder<T1, T2, T3> {
-//!     name: Option<String>,
-//!     age: Option<i32>,
-//!     gender: Option<Gender>,
-//!     _phantom: PhantomData<(T1, T2, T3)>
-//! }
-//!
 //! impl Person {
 //!     // Create an empty builder
-//!     fn new() -> PersonBuilder<(), (), ()> {
+//!     fn new<'a>() -> PersonBuilder<'a, (), (), (), (), ()> {
 //!         PersonBuilder {
-//!             name: None,
+//!             _phantom: PhantomData,
 //!             age: None,
-//!             // Default value
-//!             gender: Some(Gender::Nonbinary),
-//!             _phantom: PhantomData
+//!             name: None,
+//!             gender: Some(Setter::Value(Gender::Nonbinary)),
 //!         }
 //!     }
 //! }
-//!
-//! // Builder for `name`.
-//! impl<T2, T3> PersonBuilder<(), T2, T3> {
-//!     // Receives `Into` traits.
-//!     fn name<IntoType: Into<String>>(self, value: IntoType) ->
-//!         Result<PersonBuilder<String, T2, T3>, String> {
-//!         // Validation check.
+//! // A builder structure for `Person`.
+//! struct PersonBuilder<
+//!     'a, T1, T2, T3,
+//!     AsyncFieldMarker, // A generic for checking async fields
+//!     ValidatorOption,  // A generic for checking lazy validators
+//! > {
+//!     _phantom: PhantomData<(
+//!         T1, T2, T3,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     )>,
+//!     // Fields are wrapped in `Option`s.
+//!     age: Option<Setter<'a, i32>>,
+//!     name: Option<Setter<'a, String>>,
+//!     gender: Option<Setter<'a, Gender>>,
+//! }
+//! // Implementation for `build` function
+//! impl<'a, T3>
+//!     // It can be called regardless of whether `T3` is `()` or `Gender`.
+//!     PersonBuilder<'a, i32, String, T3, (), ()>
+//! {
+//!     fn build(self) -> Person {
+//!         let age = match self.age.unwrap() {
+//!             Setter::Value(v) => v,
+//!             Setter::Lazy(f) => f(),
+//!             _ => unimplemented!(),
+//!         };
+//!         let name = match self.name.unwrap() {
+//!             Setter::Value(v) => v,
+//!             Setter::Lazy(f) => f(),
+//!             _ => unimplemented!(),
+//!         };
+//!         let gender = match self.gender.unwrap() {
+//!             Setter::Value(v) => v,
+//!             Setter::Lazy(f) => f(),
+//!             _ => unimplemented!(),
+//!         };
+//!         Person { age, name, gender }
+//!     }
+//! }
+//! impl<'a, T2, T3, AsyncFieldMarker, ValidatorOption>
+//!     PersonBuilder<
+//!         'a, (), T2, T3,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     >
+//! {
+//!     // Setter for `age`
+//!     fn age(
+//!         self,
+//!         value: i32,
+//!     ) -> PersonBuilder<
+//!         'a, i32, T2, T3,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     > {
+//!         PersonBuilder {
+//!             _phantom: PhantomData,
+//!             age: Some(Setter::Value(value.into())),
+//!             name: self.name,
+//!             gender: self.gender,
+//!         }
+//!     }
+//! }
+//! impl<'a, T1, T3, AsyncFieldMarker, ValidatorOption>
+//!     PersonBuilder<
+//!         'a, T1, (), T3,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     >
+//! {
+//!     // Setter for `name`
+//!     fn name<IntoType: Into<String>>(
+//!         self,
+//!         value: IntoType,
+//!     ) -> Result<
+//!         PersonBuilder<
+//!             'a, T1, String, T3,
+//!             AsyncFieldMarker,
+//!             ValidatorOption,
+//!         >,
+//!         String,
+//!     > {
+//!         // Validate the value
 //!         match is_not_empty(value.into()) {
 //!             Ok(value) => Ok(PersonBuilder {
-//!                 // Converts `IntoType` into `String`.
-//!                 name: Some(value.into()),
-//!                 age: self.age,
-//!                 gender: self.gender,
 //!                 _phantom: PhantomData,
+//!                 age: self.age,
+//!                 name: Some(Setter::Value(value)),
+//!                 gender: self.gender,
 //!             }),
-//!             Err(e) => Err(format!("Validation failed: {:?}", e))
+//!             Err(e) => Err(format!("Validation failed: {:?}", e)),
 //!         }
 //!     }
 //! }
-//!
-//! // Builder for `age`.
-//! impl<T1, T3> PersonBuilder<T1, (), T3> {
-//!     fn age(self, value: i32) -> PersonBuilder<T1, i32, T3> {
+//! impl<'a, T1, T2, AsyncFieldMarker, ValidatorOption>
+//!     PersonBuilder<
+//!         'a, T1, T2, (),
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     >
+//! {
+//!     // Setter for `gender`
+//!     fn gender(
+//!         self,
+//!         value: Gender,
+//!     ) -> PersonBuilder<
+//!         'a, T1, T2, Gender,
+//!         AsyncFieldMarker,
+//!         ValidatorOption,
+//!     > {
 //!         PersonBuilder {
-//!             name: self.name,
-//!             age: Some(value),
-//!             gender: self.gender,
 //!             _phantom: PhantomData,
-//!         }
-//!     }
-//! }
-//!
-//! // Builder for `gender`.
-//! impl<T1, T2> PersonBuilder<T1, T2, ()> {
-//!     fn gender(self, value: Gender) -> PersonBuilder<T1, T2, Gender> {
-//!         PersonBuilder {
-//!             name: self.name,
 //!             age: self.age,
-//!             gender: Some(value),
-//!             _phantom: PhantomData,
-//!         }
-//!     }
-//! }
-//!
-//! // `build` function
-//! // It can be called regardless of whether `T3` is `()` or `Gender`.
-//! impl<T3> PersonBuilder<String, i32, T3> {
-//!     fn build(self) -> Person {
-//!         Person {
-//!             name: self.name.unwrap(),
-//!             age: self.age.unwrap(),
-//!             gender: self.gender.unwrap(),
+//!             name: self.name,
+//!             gender: Some(Setter::Value(value.into())),
 //!         }
 //!     }
 //! }

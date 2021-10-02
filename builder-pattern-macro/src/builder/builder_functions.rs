@@ -218,7 +218,7 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         let validator_option = if f.attrs.validator.is_some() {
-            quote! {::builder_pattern::setter::HavingAsyncValidator}
+            quote! {::builder_pattern::setter::HavingLazyValidator}
         } else {
             quote! {ValidatorOption}
         };
@@ -289,7 +289,7 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         let validator_option = if f.attrs.validator.is_some() {
-            quote! {::builder_pattern::setter::HavingAsyncValidator}
+            quote! {::builder_pattern::setter::HavingLazyValidator}
         } else {
             quote! {ValidatorOption}
         };

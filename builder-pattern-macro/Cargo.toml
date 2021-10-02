@@ -4,13 +4,11 @@ version = "0.4.0"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"
-description = "A derivable macro for declaring a builder pattern."
-repository = "https://github.com/SeokminHong/builder-pattern"
-homepage = "https://github.com/SeokminHong/builder-pattern"
-documentation = "https://docs.rs/builder-pattern"
+description = "A macro crate for builder-pattern. Do not use this crate directly."
+repository = "https://github.com/SeokminHong/builder-pattern-macro"
+homepage = "https://github.com/SeokminHong/builder-pattern-macro"
 categories = ["development-tools", "rust-patterns"]
 keywords = ["builder", "pattern", "macro", "derive", "struct"]
-readme = "README.md"
 
 [dependencies]
 proc-macro2 = "1.0"

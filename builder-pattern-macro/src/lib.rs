@@ -1,3 +1,6 @@
+//! A macro crate for [builder-pattern](https://crates.io/crates/builder-pattern).
+//! Do not use this crate directly.
+
 mod attributes;
 mod builder;
 mod field;
