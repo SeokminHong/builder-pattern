@@ -144,6 +144,32 @@ let test2 = Test::new()         // TestBuilder<(), (), ...>
     .build();
 ```
 
+### `#[public]`
+
+If this attribute is present, a field would be exposed with setter functions even though the
+field is private. It provides a way to access private fields during the building.
+
+Example:
+
+```rust
+mod test {
+    #[derive(Builder)]
+    pub struct Test {
+        #[public]
+        id: Uuid,
+        pub name: &'static str,
+    }
+}
+use test::Test;
+let test1 = Test::new()   // TestBuilder<(), (), ...>
+    .id(Uuid::new_v4())   // TestBuilder<Uuid, (), ...>
+    .name("Joe")          // TestBuilder<Uuid, &'static str, ...>
+    .build();             // Test
+
+assert_eq!(test1.name, "Joe");
+println!("{}", test1.id); // Error: `id` is a private field.
+```
+
 ### `#[setter(value | lazy | async)]`
 
 If this attribute presents, it provides specified setters. If it doesn't, only the value setter is provided.
