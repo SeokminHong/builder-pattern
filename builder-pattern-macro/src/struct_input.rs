@@ -8,8 +8,8 @@ use crate::struct_impl::StructImpl;
 use core::str::FromStr;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
-use syn::parse::{Parse, ParseStream, Result};
 use syn::{
+    parse::{Parse, ParseStream, Result},
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
     VisPublic, Visibility,
 };

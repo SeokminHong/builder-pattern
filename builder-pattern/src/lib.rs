@@ -143,8 +143,8 @@
 //!     name: String,
 //! }
 //!
-//! let test1 = Test::new()         // TestBuilder<(), ()>
-//!     .name(String::from("Joe"))  // TestBuilder<String, ()>
+//! let test1 = Test::new()         // TestBuilder<(), (), ...>
+//!     .name(String::from("Joe"))  // TestBuilder<String, (), ...>
 //!     .build();                   // Test
 //! # // cont
 //! ```
@@ -159,8 +159,8 @@
 //! #     id: Uuid,
 //! #     name: String,
 //! # }
-//! let test2 = Test::new()         // TestBuilder<(), ()>
-//!     .name(String::from("Jack")) // TestBuilder<String, ()>
+//! let test2 = Test::new()         // TestBuilder<(), (), ...>
+//!     .name(String::from("Jack")) // TestBuilder<String, (), ...>
 //!     // Error: `id` function is not generated.
 //!     .id(Uuid::parse_str("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e").unwrap())
 //!     .build();
@@ -199,7 +199,6 @@
 //!
 //! A setter function for a field having this attribute will accept `Into`
 //! trait as a parameter. You can use this setter with implicit conversion.
-//! Currently, it cannot be used with async or lazy setters.
 //!
 //! Example:
 //!
@@ -208,12 +207,18 @@
 //! #[derive(Builder)]
 //! struct Test {
 //!     #[into]
+//!     #[setter(value, lazy)]
 //!     pub name: String,
 //! }
 //!
-//! let test = Test::new()          // TestBuilder<(), ...>
+//! let test1 = Test::new()         // TestBuilder<(), ...>
 //!     // `&str` is implicitly converted into `String`.
 //!     .name("Hello")              // TestBuilder<String, ...>
+//!     .build();                   // Test
+//!
+//! let test2 = Test::new()         // TestBuilder<(), ...>
+//!     // `&str` is implicitly converted into `String`.
+//!     .name_lazy(|| "Hello")      // TestBuilder<String, ...>
 //!     .build();                   // Test
 //! ```
 //!
@@ -263,7 +268,7 @@
 //! #     }
 //! # }
 //! #
-//! let test2 = Test::new() // TestBuilder<()>
+//! let test2 = Test::new() // TestBuilder<(), ...>
 //!     .name("")           // Err(String{ "Validation failed: Name cannot be empty." })
 //!     .unwrap()           // panic!
 //!     .build();
@@ -291,7 +296,7 @@
 //! #
 //!
 //! let test1 = Test::new()         // TestBuilder<(), ...>
-//!     .name_lazy(|| "Hello")         // TestBuilder<String, ...>
+//!     .name_lazy(|| "Hello")      // TestBuilder<String, ...>
 //!     .build()                    // Ok(Test)
 //!     .unwrap();                  // Test
 //!

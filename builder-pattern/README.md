@@ -25,18 +25,18 @@ struct Person {
     gender: Gender,
 }
 
-let p1 = Person::new()          // PersonBuilder<(), (), ()>
-    .name(String::from("Joe"))  // PersonBuilder<String, (), ()>
-    .age(27)                    // PersonBuilder<String, i32, ()>
+let p1 = Person::new()          // PersonBuilder<(), (), (), ...>
+    .name(String::from("Joe"))  // PersonBuilder<String, (), (), ...>
+    .age(27)                    // PersonBuilder<String, i32, (), ...>
     .build();                   // Person
 
 // Order does not matter.
-let p2 = Person::new()          // PersonBuilder<(), (), ()>
-    .age(32)                    // PersonBuilder<(), i32, ()>
+let p2 = Person::new()          // PersonBuilder<(), (), (), ...>
+    .age(32)                    // PersonBuilder<(), i32, (), ...>
     // `&str` is implicitly converted into `String`
     // because of `into` attribute!
-    .name("Jack")               // PersonBuilder<String, i32, ()>
-    .gender(Gender::Male)       // PersonBuilder<String, i32, Gender>
+    .name("Jack")               // PersonBuilder<String, i32, (), ...>
+    .gender(Gender::Male)       // PersonBuilder<String, i32, Gender, ...>
     .build();                   // Person
 
 let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
@@ -51,8 +51,8 @@ let p3 = Person::new()          // PersonBuilder<(), (), (), ...>
     .await;                     // Person
 
 // `name` field required - Compilation error.
-let p4 = Person::new()          // PersonBuilder<(), (), ()>
-    .age(15)                    // PersonBuilder<(), i32, ()>
+let p4 = Person::new()          // PersonBuilder<(), (), (), ...>
+    .age(15)                    // PersonBuilder<(), i32, (), ...>
     .build();
 ```
 
@@ -133,12 +133,12 @@ struct Test {
     name: String,
 }
 
-let test1 = Test::new()         // TestBuilder<(), ()>
-    .name(String::from("Joe"))  // TestBuilder<String, ()>
+let test1 = Test::new()         // TestBuilder<(), (), ...>
+    .name(String::from("Joe"))  // TestBuilder<String, (), ...>
     .build();                   // Test
 
-let test2 = Test::new()         // TestBuilder<(), ()>
-    .name(String::from("Jack")) // TestBuilder<String, ()>
+let test2 = Test::new()         // TestBuilder<(), (), ...>
+    .name(String::from("Jack")) // TestBuilder<String, (), ...>
     // Error: `id` function is not generated.
     .id(Uuid::parse_str("46ebd0ee-0e6d-43c9-b90d-ccc35a913f3e").unwrap())
     .build();
@@ -171,7 +171,7 @@ let p1 = Person::new()
 
 ### `#[into]`
 
-A setter function for a field having this attribute will accept `Into` trait as a parameter. You can use this setter with implicit conversion. Currently, it cannot be used with async or lazy setters.
+A setter function for a field having this attribute will accept `Into` trait as a parameter. You can use this setter with implicit conversion.
 
 Example:
 
@@ -179,12 +179,18 @@ Example:
 #[derive(Builder)]
 struct Test {
     #[into]
+    #[setter(value, lazy)]
     pub name: String,
 }
 
-let test = Test::new()          // TestBuilder<()>
+let test1 = Test::new()         // TestBuilder<(), ...>
     // `&str` is implicitly converted into `String`.
-    .name("Hello")              // TestBuilder<String>
+    .name("Hello")              // TestBuilder<String, ...>
+    .build();                   //
+
+let test2 = Test::new()         // TestBuilder<(), ...>
+    // `&str` is implicitly converted into `String`.
+    .name_lazy(|| "Hello")      // TestBuilder<String, ...>
     .build();                   // Test
 ```
 
@@ -208,12 +214,12 @@ fn is_not_empty(name: String) -> Result<String, &'static str> {
     }
 }
 
-let test1 = Test::new()         // TestBuilder<()>
-    .name("Hello")              // Ok(TestBuilder<String>)
-    .unwrap()                   // TestBuilder<String>
+let test1 = Test::new()         // TestBuilder<(), ...>
+    .name("Hello")              // Ok(TestBuilder<String, ...>)
+    .unwrap()                   // TestBuilder<String, ...>
     .build();                   // Test
 
-let test2 = Test::new()         // TestBuilder<()>
+let test2 = Test::new()         // TestBuilder<(), ...>
     .name("")                   // Err(String{ "Validation failed: Name cannot be empty." })
     .unwrap()                   // panic!
     .build();
@@ -230,15 +236,15 @@ struct Test {
     pub name: &'static str,
 }
 
-let test1 = Test::new()         // TestBuilder<()>
-    .name_lazy("Hello")         // TestBuilder<String>
+let test1 = Test::new()         // TestBuilder<(), ...>
+    .name_lazy("Hello")         // TestBuilder<String, ...>
     .build()                    // Ok(Test)
     .unwrap();                  // Test
 
-let test2 = Test::new()         // TestBuilder<()>
+let test2 = Test::new()         // TestBuilder<(), ...>
     .name_async(|| async {
         "Hello".to_string()
-    })                          // TestBuilder<String>
+    })                          // TestBuilder<String, ...>
     .build()                    // Future<Result<Test, Strin
     .await                      // Ok(Test)
     .unwrap();                  // Test
