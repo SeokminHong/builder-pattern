@@ -1,4 +1,4 @@
-use crate::attributes::FieldAttributes;
+use crate::attributes::{FieldAttributes, FieldVisibility};
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -6,13 +6,12 @@ use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
 use core::str::FromStr;
-
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
-    Visibility,
+    VisPublic, Visibility,
 };
 
 pub struct StructInput {
@@ -57,7 +56,12 @@ impl Parse for StructInput {
                 &mut required_fields
             };
             fields.push(Field {
-                vis: f.vis,
+                vis: if attrs.vis == FieldVisibility::Public {
+                    let v = <Token![pub]>::default();
+                    Visibility::Public(VisPublic { pub_token: v })
+                } else {
+                    f.vis
+                },
                 ident: f
                     .ident
                     .unwrap_or_else(|| unimplemented!("Fields must have an identifier!")),
