@@ -1,6 +1,6 @@
 [package]
 name = "builder-pattern"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"
@@ -13,7 +13,7 @@ keywords = ["builder", "pattern", "macro", "derive", "struct"]
 readme = "README.md"
 
 [dependencies]
-builder-pattern-macro = { version = "0.4.1", path = "../builder-pattern-macro" }
+builder-pattern-macro = { version = "0.4.2", path = "../builder-pattern-macro" }
 futures = { version = "0.3", optional = true }
 
 [dev-dependencies]
