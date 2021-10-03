@@ -1,10 +1,13 @@
-use crate::{attributes::Setters, field::Field, struct_input::StructInput};
+use crate::{
+    attributes::{FieldVisibility, Setters},
+    field::Field,
+    struct_input::StructInput,
+};
 
 use core::str::FromStr;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
-use syn::spanned::Spanned;
-use syn::{parse_quote, Attribute};
+use syn::{parse_quote, spanned::Spanned, Attribute};
 
 pub struct BuilderFunctions<'a> {
     pub input: &'a StructInput,
@@ -29,7 +32,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .iter()
             .chain(self.input.optional_fields.iter())
             .for_each(move |f| {
-                if f.attrs.hidden {
+                if f.attrs.vis == FieldVisibility::Hidden {
                     index += 1;
                     return;
                 }

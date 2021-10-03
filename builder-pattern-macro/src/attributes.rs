@@ -9,24 +9,31 @@ bitflags! {
     }
 }
 
+#[derive(PartialEq)]
+pub enum FieldVisibility {
+    Public,
+    Hidden,
+    Default,
+}
+
 pub struct FieldAttributes {
     pub default: Option<(Expr, Setters)>,
-    pub hidden: bool,
     pub use_into: bool,
     pub validator: Option<Expr>,
     pub documents: Vec<Attribute>,
     pub setters: Setters,
+    pub vis: FieldVisibility,
 }
 
 impl Default for FieldAttributes {
     fn default() -> Self {
         FieldAttributes {
             default: None,
-            hidden: false,
             use_into: false,
             validator: None,
             documents: vec![],
             setters: Setters::VALUE,
+            vis: FieldVisibility::Default,
         }
     }
 }
@@ -51,7 +58,15 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 }
                 unimplemented!("Asynchronous default is not implemented yet.")
             } else if attr.path.is_ident("hidden") {
-                attributes.hidden = true;
+                if attributes.vis != FieldVisibility::Default {
+                    unimplemented!("Duplicated `hidden` attributes.")
+                }
+                attributes.vis = FieldVisibility::Hidden;
+            } else if attr.path.is_ident("public") {
+                if attributes.vis != FieldVisibility::Default {
+                    unimplemented!("Duplicated `public` attributes.")
+                }
+                attributes.vis = FieldVisibility::Public;
             } else if attr.path.is_ident("into") {
                 attributes.use_into = true
             } else if attr.path.is_ident("validator") {
@@ -128,7 +143,7 @@ pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
 
 impl FieldAttributes {
     fn validate(&self) -> Result<(), String> {
-        if self.hidden && self.default.is_none() {
+        if self.vis == FieldVisibility::Hidden && self.default.is_none() {
             Err(String::from(
                 "`hidden` attribute requires `default` attribute.",
             ))
