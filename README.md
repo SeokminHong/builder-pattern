@@ -263,7 +263,7 @@ struct Test {
 }
 
 let test1 = Test::new()         // TestBuilder<(), ...>
-    .name_lazy("Hello")         // TestBuilder<String, ...>
+    .name_lazy(|| "Hello")      // TestBuilder<String, ...>
     .build()                    // Ok(Test)
     .unwrap();                  // Test
 
