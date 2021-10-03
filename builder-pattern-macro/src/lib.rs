@@ -7,9 +7,10 @@ mod field;
 mod struct_impl;
 mod struct_input;
 
+use struct_input::StructInput;
+
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use struct_input::StructInput;
 use syn::parse_macro_input;
 
 #[macro_use]

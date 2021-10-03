@@ -191,7 +191,11 @@ impl<'a> BuilderFunctions<'a> {
         let impl_tokens = self.input.tokenize_impl();
         let ty_tokens = self.input.tokenize_types();
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
-        let arg_type_gen = quote! {<ValType: #fn_lifetime + ::core::ops::Fn() -> #ty>};
+        let arg_type_gen = if f.attrs.use_into {
+            quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
+        } else {
+            quote! {<ValType: #fn_lifetime + ::core::ops::Fn() -> #ty>}
+        };
         let arg_type = quote! {ValType};
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -199,14 +203,14 @@ impl<'a> BuilderFunctions<'a> {
             Some(v) => quote_spanned! { v.span() =>
                 #ident: Some(
                     ::builder_pattern::setter::Setter::LazyValidated(
-                        Box::new(move || #v((value)()))
+                        Box::new(move || #v((value)().into()))
                     )
                 )
             },
             None => quote! {
                 #ident: Some(
                     ::builder_pattern::setter::Setter::Lazy(
-                        Box::new(value)
+                        Box::new(move || (value)().into())
                     )
                 )
             },
@@ -234,6 +238,7 @@ impl<'a> BuilderFunctions<'a> {
             {
                 #(#documents)*
                 #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type {
+                    #[allow(useless_conversion)]
                     #ret_expr_val
                 }
             }
@@ -256,10 +261,18 @@ impl<'a> BuilderFunctions<'a> {
         let impl_tokens = self.input.tokenize_impl();
         let ty_tokens = self.input.tokenize_types();
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
-        let arg_type_gen = quote! {<
-            ReturnType: #fn_lifetime + ::core::future::Future<Output = #ty>,
-            ValType: #fn_lifetime + ::core::ops::Fn() -> ReturnType
-        >};
+        let arg_type_gen = if f.attrs.use_into {
+            quote! {<
+                IntoType: Into<#ty>,
+                ReturnType: #fn_lifetime + ::core::future::Future<Output = IntoType>,
+                ValType: #fn_lifetime + ::core::ops::Fn() -> ReturnType
+            >}
+        } else {
+            quote! {<
+                ReturnType: #fn_lifetime + ::core::future::Future<Output = #ty>,
+                ValType: #fn_lifetime + ::core::ops::Fn() -> ReturnType
+            >}
+        };
         let arg_type = quote! {ValType};
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -268,7 +281,7 @@ impl<'a> BuilderFunctions<'a> {
                 #ident: Some(
                     ::builder_pattern::setter::Setter::AsyncValidated(
                         Box::new(move || {
-                            Box::pin(async move { #v((value)().await) })
+                            Box::pin(async move { #v((value)().await.into()) })
                         })
                     )
                 )
@@ -276,7 +289,7 @@ impl<'a> BuilderFunctions<'a> {
             None => quote! {
                 #ident: Some(
                     ::builder_pattern::setter::Setter::Async(
-                        Box::new(move || Box::pin((value)()))
+                        Box::new(move || Box::pin(async move { (value)().await.into() }))
                     )
                 )
             },
@@ -304,6 +317,7 @@ impl<'a> BuilderFunctions<'a> {
             {
                 #(#documents)*
                 #vis fn #seter_name #arg_type_gen(self, value: #arg_type) -> #ret_type {
+                    #[allow(useless_conversion)]
                     #ret_expr_val
                 }
             }
