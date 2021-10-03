@@ -1,12 +1,12 @@
 [package]
 name = "test-no-future"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2018"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
 license = "MIT"
 
 [dependencies]
-builder-pattern = { version = "0.4.0", path = "../builder-pattern", default-features = false }
+builder-pattern = { version = "0.4.1", path = "../builder-pattern", default-features = false }
 
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
