@@ -32,7 +32,14 @@ impl<'a> ToTokens for StructImpl<'a> {
             impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
                 #(#docs)*
                 #[allow(clippy::new_ret_no_self)]
-                #vis fn new<#fn_lifetime>() -> #builder_name<#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#empty_generics),*, (), ()> {
+                #vis fn new<#fn_lifetime>() -> #builder_name<
+                    #fn_lifetime,
+                    #(#lifetimes,)*
+                    #ty_tokens
+                    #(#empty_generics),*,
+                    (),
+                    ()
+                > {
                     #[allow(clippy::redundant_closure_call)]
                     #builder_name {
                         _phantom: ::core::marker::PhantomData,

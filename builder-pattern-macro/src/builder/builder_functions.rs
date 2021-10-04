@@ -128,7 +128,14 @@ impl<'a> BuilderFunctions<'a> {
                 };
                 (
                     quote! {
-                        Result<#builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>, String>
+                        Result<#builder_name <
+                            #fn_lifetime,
+                            #(#lifetimes,)*
+                            #ty_tokens
+                            #(#after_generics,)*
+                            AsyncFieldMarker,
+                            ValidatorOption
+                        >, String>
                     },
                     quote_spanned! { v.span() =>
                         #[allow(clippy::useless_conversion)]
@@ -151,7 +158,14 @@ impl<'a> BuilderFunctions<'a> {
                 };
                 (
                     quote! {
-                        #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, ValidatorOption>
+                        #builder_name <
+                            #fn_lifetime,
+                            #(#lifetimes,)*
+                            #ty_tokens
+                            #(#after_generics,)*
+                            AsyncFieldMarker,
+                            ValidatorOption
+                        >
                     },
                     quote! {
                         #builder_name {
@@ -164,7 +178,20 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
+            impl <
+                #fn_lifetime,
+                #impl_tokens
+                #(#other_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            > #builder_name <
+                #fn_lifetime,
+                #(#lifetimes,)*
+                #ty_tokens
+                #(#before_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            >
                 #where_clause
             {
                 #(#documents)*
@@ -229,11 +256,31 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         let ret_type = quote! {
-            #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#after_generics,)* AsyncFieldMarker, #validator_option>
+            #builder_name <
+                #fn_lifetime,
+                #(#lifetimes,)*
+                #ty_tokens
+                #(#after_generics,)*
+                AsyncFieldMarker,
+                #validator_option
+            >
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
+            impl <
+                #fn_lifetime,
+                #impl_tokens
+                #(#other_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            > #builder_name <
+                #fn_lifetime,
+                #(#lifetimes,)*
+                #ty_tokens
+                #(#before_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            >
                 #where_clause
             {
                 #(#documents)*
@@ -312,7 +359,20 @@ impl<'a> BuilderFunctions<'a> {
         };
 
         tokens.extend(quote! {
-            impl <#fn_lifetime, #impl_tokens #(#other_generics,)* AsyncFieldMarker, ValidatorOption> #builder_name <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#before_generics,)* AsyncFieldMarker, ValidatorOption>
+            impl <
+                #fn_lifetime,
+                #impl_tokens
+                #(#other_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            > #builder_name <
+                #fn_lifetime,
+                #(#lifetimes,)*
+                #ty_tokens
+                #(#before_generics,)*
+                AsyncFieldMarker,
+                ValidatorOption
+            >
                 #where_clause
             {
                 #(#documents)*

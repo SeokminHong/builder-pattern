@@ -41,7 +41,12 @@ impl<'a> ToTokens for BuilderDecl<'a> {
                 AsyncFieldMarker,
                 ValidatorOption
             > #where_clause {
-                _phantom: ::core::marker::PhantomData<(#ty_tokens #(#all_generics,)* AsyncFieldMarker, ValidatorOption)>,
+                _phantom: ::core::marker::PhantomData<(
+                    #ty_tokens
+                    #(#all_generics,)*
+                    AsyncFieldMarker,
+                    ValidatorOption
+                )>,
                 #(#builder_fields),*
             }
         });

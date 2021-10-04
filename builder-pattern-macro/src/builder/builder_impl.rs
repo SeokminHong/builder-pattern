@@ -188,8 +188,14 @@ impl<'a> BuilderImpl<'a> {
             });
         if having_lazy_validator {
             tokens.extend(quote!{
-                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-                    <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ::builder_pattern::setter::HavingLazyValidator>
+                impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name <
+                    #fn_lifetime,
+                    #(#lifetimes,)*
+                    #ty_tokens
+                    #(#satisfied_generics),*,
+                    #async_generic,
+                    ::builder_pattern::setter::HavingLazyValidator
+                >
                     #where_clause
                 {
                     #[allow(dead_code)]
