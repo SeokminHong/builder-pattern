@@ -6,7 +6,7 @@ use crate::{
 use core::str::FromStr;
 use proc_macro2::{Group, Ident, TokenStream, TokenTree};
 use quote::ToTokens;
-use syn::{parse_quote, spanned::Spanned, Attribute};
+use syn::{parse_quote, spanned::Spanned, Attribute, Generics};
 
 /// Implementation for the given structure.
 /// It creates a `new` function.
@@ -23,38 +23,45 @@ impl<'a> ToTokens for StructImpl<'a> {
         let lifetimes = self.input.lifetimes();
         let empty_generics = self.empty_generics();
         let defaulted_generics = self.defaulted_generics();
-        let with_param_default = |ident: &Ident| {
-            self.input
-                .generics
+        fn with_param_default(
+            generics: &Generics,
+            defaulted_generics: &[Ident],
+            ident: &Ident,
+        ) -> TokenTree {
+            let with_prmdef =
+                |ident: &Ident| with_param_default(&generics, defaulted_generics, ident);
+            generics
                 .type_params()
                 .find_map(|x| {
                     if x.ident == *ident {
                         let default = x.default.as_ref().unwrap();
                         let stream = quote! { #default };
+                        let replaced_within =
+                            replace_type_params_in(stream, defaulted_generics, &with_prmdef);
                         Some(TokenTree::Group(Group::new(
                             proc_macro2::Delimiter::None,
-                            stream,
+                            replaced_within,
                         )))
                     } else {
                         None
                     }
                 })
                 .expect("hmmmm")
-        };
+        }
+
+        let with_prmdef =
+            |ident: &Ident| with_param_default(&self.input.generics, &defaulted_generics, ident);
 
         let impl_tokens = self.input.tokenize_impl(&defaulted_generics);
 
         let where_clause = &self.input.generics.where_clause;
-        let where_tokens = replace_type_params_in(
-            quote! { #where_clause },
-            &defaulted_generics,
-            &with_param_default,
-        );
+        let where_tokens =
+            replace_type_params_in(quote! { #where_clause }, &defaulted_generics, &with_prmdef);
 
         let ty_tokens = replace_type_params_in(
             self.input.tokenize_types(&[], false),
             &defaulted_generics,
-            &with_param_default,
+            &with_prmdef,
         );
 
         let fn_lifetime = self.input.fn_lifetime();
