@@ -1,7 +1,7 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
 use core::str::FromStr;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use syn::spanned::Spanned;
 
@@ -113,12 +113,20 @@ impl<'a> BuilderImpl<'a> {
                             }
                         }
                         Some((_expr, _setters)) => {
+                            let id = Ident::new("id", Span::call_site());
+                            let default = Ident::new("default", Span::call_site());
+                            let expr = wrap(quote!{ #id.cast(#default) });
                             quote! {
                                 None => unreachable!("early-bound optional field had no default set in new()"),
-                                Some(::builder_pattern::setter::Setter::Default(d, id)) => id.cast(d),
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(..)) => unreachable!("early-bound optional field had no default set in new()"),
+                                Some(::builder_pattern::setter::Setter::Default(#default, #id)) => #expr,
                             }
                         }
-                        _ => quote! { None => unreachable!("required field not set"), },
+                        _ => quote! {
+                            Some(::builder_pattern::setter::Setter::LateBoundDefault(..)) |
+                            Some(::builder_pattern::setter::Setter::Default(..)) |
+                            None => unreachable!("required field not set"),
+                        },
                     };
 
                 if f.attrs.validator.is_some()
