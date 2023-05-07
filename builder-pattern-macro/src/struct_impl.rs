@@ -80,7 +80,7 @@ impl<'a> ToTokens for StructImpl<'a> {
                 > {
                     #[allow(clippy::redundant_closure_call)]
                     #builder_name {
-                        _phantom: ::core::marker::PhantomData,
+                        __builder_phantom: ::core::marker::PhantomData,
                         #(#builder_init_args),*
                     }
                 }

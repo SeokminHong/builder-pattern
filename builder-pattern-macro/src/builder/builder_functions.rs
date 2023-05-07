@@ -180,7 +180,7 @@ impl<'a> BuilderFunctions<'a> {
                         match #v (value.into()) {
                             Ok(value) => Ok(
                                 #builder_name {
-                                    _phantom: ::core::marker::PhantomData,
+                                    __builder_phantom: ::core::marker::PhantomData,
                                     #(#builder_fields),*
                                 }),
                             Err(e) => Err(format!("Validation failed: {:?}", e))
@@ -207,7 +207,7 @@ impl<'a> BuilderFunctions<'a> {
                     },
                     quote! {
                         #builder_name {
-                            _phantom: ::core::marker::PhantomData,
+                            __builder_phantom: ::core::marker::PhantomData,
                             #(#builder_fields),*
                         }
                     },
@@ -284,7 +284,7 @@ impl<'a> BuilderFunctions<'a> {
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::core::marker::PhantomData,
+                __builder_phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };
@@ -383,7 +383,7 @@ impl<'a> BuilderFunctions<'a> {
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::core::marker::PhantomData,
+                __builder_phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };
