@@ -33,10 +33,10 @@ impl Field {
 
     pub fn tokenize_replacement_params(&self) -> TokenStream {
         let mut stream = TokenStream::new();
-        if self.attrs.replace_generics.is_empty() {
+        if self.attrs.infer.is_empty() {
             return stream;
         }
-        let underscored = self.attrs.replace_generics.iter().map(|ident| {
+        let underscored = self.attrs.infer.iter().map(|ident| {
             let string = ident.to_string() + "_";
             Ident::new(&string, ident.span())
         });

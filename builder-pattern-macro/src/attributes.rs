@@ -24,7 +24,7 @@ pub struct FieldAttributes {
     pub documents: Vec<Attribute>,
     pub setters: Setters,
     pub vis: FieldVisibility,
-    pub replace_generics: Vec<Ident>,
+    pub infer: Vec<Ident>,
 }
 
 pub fn ident_add_underscore(ident: &Ident) -> Ident {
@@ -45,7 +45,7 @@ impl Default for FieldAttributes {
             documents: vec![],
             setters: Setters::VALUE,
             vis: FieldVisibility::Default,
-            replace_generics: vec![],
+            infer: vec![],
         }
     }
 }
@@ -87,7 +87,7 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 attributes.documents = get_documents(&attrs);
             } else if attr.path.is_ident("setter") {
                 parse_setters(attr, &mut attributes)
-            } else if attr.path.is_ident("replace_generics") {
+            } else if attr.path.is_ident("infer") {
                 parse_replace_generics(attr, &mut attributes)
             }
         });
@@ -145,15 +145,15 @@ fn parse_setters(attr: &Attribute, attributes: &mut FieldAttributes) {
 
 fn parse_replace_generics(attr: &Attribute, attributes: &mut FieldAttributes) {
     let meta = attr.parse_meta().unwrap();
-    let mut replace_generics = vec![];
+    let mut infer = vec![];
     if let Meta::List(l) = meta {
         let it = l.nested.iter();
         it.for_each(|m| {
             if let NestedMeta::Meta(Meta::Path(p)) = m {
                 if let Some(ident) = p.get_ident() {
-                    replace_generics.push(ident.clone());
+                    infer.push(ident.clone());
                 } else {
-                    unimplemented!("Invalid replace_generics, write a type parameter.")
+                    unimplemented!("Invalid infer, write a type parameter.")
                 }
             } else {
                 unimplemented!("Invalid setter.")
@@ -162,7 +162,7 @@ fn parse_replace_generics(attr: &Attribute, attributes: &mut FieldAttributes) {
     } else {
         unimplemented!("Invalid setter.")
     }
-    attributes.replace_generics = replace_generics;
+    attributes.infer = infer;
 }
 
 pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {

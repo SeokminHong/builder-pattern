@@ -152,7 +152,7 @@ impl StructInput {
 
     /// Tokenize type parameters.
     /// It skips lifetimes and has no outer brackets.
-    pub fn tokenize_types(&self, replace_generics: &[Ident], omit_replaced: bool) -> TokenStream {
+    pub fn tokenize_types(&self, infer: &[Ident], omit_replaced: bool) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
@@ -161,7 +161,7 @@ impl StructInput {
         }
         if omit_replaced
             && generics.params.iter().all(|x| match x {
-                GenericParam::Type(param) => replace_generics.contains(&param.ident),
+                GenericParam::Type(param) => infer.contains(&param.ident),
                 GenericParam::Const(_) => false,
                 _ => true,
             })
@@ -187,7 +187,7 @@ impl StructInput {
                 GenericParam::Lifetime(_) => unreachable!(),
                 GenericParam::Type(param) => {
                     // Leave off the type parameter defaults
-                    if replace_generics.contains(&param.ident) {
+                    if infer.contains(&param.ident) {
                         if omit_replaced {
                             continue;
                         }
@@ -207,9 +207,9 @@ impl StructInput {
         tokens
     }
 
-    pub fn setter_where_clause(&self, replace_generics: &[Ident]) -> TokenStream {
+    pub fn setter_where_clause(&self, infer: &[Ident]) -> TokenStream {
         let mut stream = TokenStream::new();
-        if replace_generics.is_empty() {
+        if infer.is_empty() {
             return stream;
         }
         let clauses = self

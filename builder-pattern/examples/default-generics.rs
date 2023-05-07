@@ -3,7 +3,7 @@ use builder_pattern::Builder;
 #[allow(unused)]
 #[derive(Builder)]
 struct Op<T = &'static str> {
-    #[replace_generics(T)]
+    #[infer(T)]
     #[default(None)]
     optional_field: Option<T>,
 }

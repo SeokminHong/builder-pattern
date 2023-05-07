@@ -127,13 +127,13 @@ impl<'a> BuilderFunctions<'a> {
         let fn_lifetime = self.input.fn_lifetime();
         let impl_tokens = self.input.tokenize_impl(&[]);
         let ty_tokens = self.input.tokenize_types(&[], false);
-        let ty_tokens_ = self.input.tokenize_types(&f.attrs.replace_generics, false);
+        let ty_tokens_ = self.input.tokenize_types(&f.attrs.infer, false);
         let fn_generics = f.tokenize_replacement_params();
-        let fn_where_clause = self.input.setter_where_clause(&f.attrs.replace_generics);
+        let fn_where_clause = self.input.setter_where_clause(&f.attrs.infer);
         let (other_generics, before_generics, mut after_generics) = self.get_generics(f, index);
         let replaced_ty = replace_type_params_in(
             quote! { #orig_ty },
-            &f.attrs.replace_generics,
+            &f.attrs.infer,
             &ident_add_underscore_tree,
         );
         after_generics
@@ -142,7 +142,7 @@ impl<'a> BuilderFunctions<'a> {
                 let tokens = std::mem::take(ty_tokens);
                 *ty_tokens = replace_type_params_in(
                     tokens,
-                    &f.attrs.replace_generics,
+                    &f.attrs.infer,
                     &ident_add_underscore_tree,
                 );
             });
