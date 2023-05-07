@@ -34,8 +34,6 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                             _ => unreachable!(),
                         }
                     }
-                } else if !f.attrs.use_inferred.is_empty() {
-                    quote! { #ident: None }
                 } else {
                     quote! { #ident: self.#ident }
                 }

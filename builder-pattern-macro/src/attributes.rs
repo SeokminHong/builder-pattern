@@ -25,7 +25,6 @@ pub struct FieldAttributes {
     pub setters: Setters,
     pub vis: FieldVisibility,
     pub late_bound_default: bool,
-    pub use_inferred: Vec<Ident>,
     pub infer: Vec<Ident>,
 }
 
@@ -48,7 +47,6 @@ impl Default for FieldAttributes {
             setters: Setters::VALUE,
             vis: FieldVisibility::Default,
             late_bound_default: false,
-            use_inferred: vec![],
             infer: vec![],
         }
     }
@@ -94,8 +92,6 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 parse_setters(attr, &mut attributes)
             } else if attr.path.is_ident("infer") {
                 parse_infer(attr, &mut attributes)
-            } else if attr.path.is_ident("use_inferred") {
-                parse_use_inferred(attr, &mut attributes)
             } else if attr.path.is_ident("late_bound_default") {
                 attributes.late_bound_default = true;
             }
@@ -172,28 +168,6 @@ fn parse_infer(attr: &Attribute, attributes: &mut FieldAttributes) {
         unimplemented!("Invalid setter.")
     }
     attributes.infer = params;
-}
-
-fn parse_use_inferred(attr: &Attribute, attributes: &mut FieldAttributes) {
-    let meta = attr.parse_meta().unwrap();
-    let mut params = vec![];
-    if let Meta::List(l) = meta {
-        let it = l.nested.iter();
-        it.for_each(|m| {
-            if let NestedMeta::Meta(Meta::Path(p)) = m {
-                if let Some(ident) = p.get_ident() {
-                    params.push(ident.clone());
-                } else {
-                    unimplemented!("Invalid use_infer, write a type parameter.")
-                }
-            } else {
-                unimplemented!("Invalid setter.")
-            }
-        });
-    } else {
-        unimplemented!("Invalid setter.")
-    }
-    attributes.use_inferred = params;
 }
 
 pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
