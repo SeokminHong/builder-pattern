@@ -17,7 +17,7 @@ use syn::{
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
     VisPublic, Visibility,
 };
-use syn::{Path, PredicateType, Type, TypePath, WhereClause, WherePredicate};
+use syn::{WhereClause, WherePredicate};
 
 pub struct StructInput {
     pub vis: Visibility,

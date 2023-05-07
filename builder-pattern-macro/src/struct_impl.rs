@@ -1,7 +1,4 @@
-use crate::{
-    attributes::Setters, builder::builder_functions::replace_type_params_in,
-    struct_input::StructInput,
-};
+use crate::{builder::builder_functions::replace_type_params_in, struct_input::StructInput};
 
 use core::str::FromStr;
 use proc_macro2::{Group, Ident, TokenStream, TokenTree};
