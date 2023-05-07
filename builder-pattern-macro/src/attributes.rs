@@ -24,6 +24,7 @@ pub struct FieldAttributes {
     pub documents: Vec<Attribute>,
     pub setters: Setters,
     pub vis: FieldVisibility,
+    pub late_bound_default: bool,
     pub infer: Vec<Ident>,
 }
 
@@ -45,6 +46,7 @@ impl Default for FieldAttributes {
             documents: vec![],
             setters: Setters::VALUE,
             vis: FieldVisibility::Default,
+            late_bound_default: false,
             infer: vec![],
         }
     }
@@ -74,6 +76,7 @@ impl From<Vec<Attribute>> for FieldAttributes {
                     unimplemented!("Duplicated `hidden` attributes.")
                 }
                 attributes.vis = FieldVisibility::Hidden;
+                attributes.late_bound_default = true;
             } else if attr.path.is_ident("public") {
                 if attributes.vis != FieldVisibility::Default {
                     unimplemented!("Duplicated `public` attributes.")
@@ -90,6 +93,7 @@ impl From<Vec<Attribute>> for FieldAttributes {
             } else if attr.path.is_ident("infer") {
                 parse_replace_generics(attr, &mut attributes)
             }
+            // TODO: rebind default (syntactically) in infer() setters
         });
         match attributes.validate() {
             Ok(_) => attributes,

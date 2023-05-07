@@ -1,4 +1,7 @@
-use crate::{builder::builder_functions::replace_type_params_in, struct_input::StructInput};
+use crate::{
+    attributes::Setters, builder::builder_functions::replace_type_params_in,
+    struct_input::StructInput,
+};
 
 use core::str::FromStr;
 use proc_macro2::{Group, Ident, TokenStream, TokenTree};
@@ -87,8 +90,26 @@ impl<'a> StructImpl<'a> {
                 }
             })
             .chain(self.input.optional_fields.iter().map(|f| {
-                if let (ident, Some((expr, _setters))) = (&f.ident, &f.attrs.default.as_ref()) {
-                    quote_spanned! { expr.span() => #ident: None }
+                if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
+                    if f.attrs.late_bound_default {
+                        quote_spanned! { expr.span() => #ident: None }
+                    } else {
+                        match *setters {
+                            Setters::VALUE => quote_spanned! { expr.span() =>
+                                #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                            },
+                            Setters::LAZY => {
+                                quote_spanned! { expr.span() =>
+                                    #ident: Some(
+                                        ::builder_pattern::setter::Setter::Lazy(
+                                            Box::new(#expr)
+                                        )
+                                    )
+                                }
+                            }
+                            _ => unimplemented!(),
+                        }
+                    }
                 } else {
                     unimplemented!()
                 }

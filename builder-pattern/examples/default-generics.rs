@@ -51,7 +51,7 @@ where
     #[default(|r, _t| r)]
     optional: F2,
     #[hidden]
-    #[default_lazy(|| PhantomData)]
+    #[default(PhantomData)]
     phantom: PhantomData<(T, R)>,
 }
 

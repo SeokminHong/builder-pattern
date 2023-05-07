@@ -103,7 +103,7 @@ impl<'a> BuilderImpl<'a> {
                 struct_init_args.push(ident.to_token_stream());
                 let mk_default_case =
                     |wrap: fn(TokenStream) -> TokenStream| match &f.attrs.default.as_ref() {
-                        Some((expr, setters)) => {
+                        Some((expr, setters)) if f.attrs.late_bound_default => {
                             let expr = match *setters {
                                 Setters::VALUE => quote_spanned! { expr.span() => #expr },
                                 Setters::LAZY => quote_spanned! { expr.span() => (#expr)() },
@@ -112,7 +112,7 @@ impl<'a> BuilderImpl<'a> {
                             let wrapped_expr = wrap(expr);
                             quote! { None => { let val: #substituted_ty = #wrapped_expr; val }, }
                         }
-                        None => quote! { None => unreachable!(), },
+                        _ => quote! { None => unreachable!("required field not set"), },
                     };
 
                 if f.attrs.validator.is_some()
