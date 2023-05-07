@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use syn::{Attribute, Expr, Meta, NestedMeta};
+use syn::{Attribute, Expr, Ident, Meta, NestedMeta};
 
 bitflags! {
     pub struct Setters: u32 {
@@ -23,6 +23,7 @@ pub struct FieldAttributes {
     pub documents: Vec<Attribute>,
     pub setters: Setters,
     pub vis: FieldVisibility,
+    pub replace_generics: Vec<Ident>,
 }
 
 impl Default for FieldAttributes {
@@ -34,6 +35,7 @@ impl Default for FieldAttributes {
             documents: vec![],
             setters: Setters::VALUE,
             vis: FieldVisibility::Default,
+            replace_generics: vec![],
         }
     }
 }
@@ -75,6 +77,8 @@ impl From<Vec<Attribute>> for FieldAttributes {
                 attributes.documents = get_documents(&attrs);
             } else if attr.path.is_ident("setter") {
                 parse_setters(attr, &mut attributes)
+            } else if attr.path.is_ident("replace_generics") {
+                parse_replace_generics(attr, &mut attributes)
             }
         });
         match attributes.validate() {
@@ -127,6 +131,28 @@ fn parse_setters(attr: &Attribute, attributes: &mut FieldAttributes) {
         unimplemented!("Invalid setter.")
     }
     attributes.setters = setters;
+}
+
+fn parse_replace_generics(attr: &Attribute, attributes: &mut FieldAttributes) {
+    let meta = attr.parse_meta().unwrap();
+    let mut replace_generics = vec![];
+    if let Meta::List(l) = meta {
+        let it = l.nested.iter();
+        it.for_each(|m| {
+            if let NestedMeta::Meta(Meta::Path(p)) = m {
+                if let Some(ident) = p.get_ident() {
+                    replace_generics.push(ident.clone());
+                } else {
+                    unimplemented!("Invalid replace_generics, write a type parameter.")
+                }
+            } else {
+                unimplemented!("Invalid setter.")
+            }
+        });
+    } else {
+        unimplemented!("Invalid setter.")
+    }
+    attributes.replace_generics = replace_generics;
 }
 
 pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {

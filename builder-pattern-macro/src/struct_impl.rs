@@ -21,7 +21,7 @@ impl<'a> ToTokens for StructImpl<'a> {
         let lifetimes = self.input.lifetimes();
         let impl_tokens = self.input.tokenize_impl();
         let empty_generics = self.empty_generics();
-        let ty_tokens = self.input.tokenize_types();
+        let ty_tokens = self.input.tokenize_types(&[]);
 
         let fn_lifetime = self.input.fn_lifetime();
 

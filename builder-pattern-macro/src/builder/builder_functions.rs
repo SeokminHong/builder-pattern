@@ -5,7 +5,7 @@ use crate::{
 };
 
 use core::str::FromStr;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
@@ -50,6 +50,25 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 index += 1;
             });
     }
+}
+
+fn replace_type_params_in(stream: TokenStream, replacements: &[Ident]) -> TokenStream {
+    stream
+        .into_iter()
+        .map(|tt| match tt {
+            TokenTree::Group(g) => {
+                let delim = g.delimiter();
+                let stream = replace_type_params_in(g.stream(), replacements);
+                TokenTree::Group(Group::new(delim, stream))
+            }
+            TokenTree::Ident(ident) if replacements.contains(&ident) => {
+                let ident_ = ident.to_string() + "_";
+                let ident = Ident::new(&ident_, ident.span());
+                TokenTree::Ident(ident)
+            }
+            x => x,
+        })
+        .collect()
 }
 
 impl<'a> BuilderFunctions<'a> {
@@ -101,21 +120,31 @@ impl<'a> BuilderFunctions<'a> {
         index: usize,
         builder_fields: &mut Vec<TokenStream>,
     ) {
-        let (ident, ty, vis) = (&f.ident, &f.ty, &f.vis);
+        let (ident, orig_ty, vis) = (&f.ident, &f.ty, &f.vis);
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
         let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
-        let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
+        let ty_tokens = self.input.tokenize_types(&[]);
+        let ty_tokens_ = self.input.tokenize_types(&f.attrs.replace_generics);
+        let fn_generics = f.tokenize_replacement_params();
+        let fn_where_clause = self.input.setter_where_clause(&f.attrs.replace_generics);
+        let (other_generics, before_generics, mut after_generics) = self.get_generics(f, index);
+        let replaced_ty = replace_type_params_in(quote! { #orig_ty }, &f.attrs.replace_generics);
+        after_generics
+            .iter_mut()
+            .for_each(|ty_tokens: &mut TokenStream| {
+                let tokens = std::mem::take(ty_tokens);
+                *ty_tokens = replace_type_params_in(tokens, &f.attrs.replace_generics);
+            });
         let (arg_type_gen, arg_type) = if f.attrs.use_into {
             (
-                Some(quote! {<IntoType: Into<#ty>>}),
+                quote! {<IntoType: Into<#orig_ty>>},
                 TokenStream::from_str("IntoType").unwrap(),
             )
         } else {
-            (None, quote! {#ty})
+            (fn_generics, quote! { #replaced_ty })
         };
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -131,7 +160,7 @@ impl<'a> BuilderFunctions<'a> {
                         Result<#builder_name <
                             #fn_lifetime,
                             #(#lifetimes,)*
-                            #ty_tokens
+                            #ty_tokens_
                             #(#after_generics,)*
                             AsyncFieldMarker,
                             ValidatorOption
@@ -161,7 +190,7 @@ impl<'a> BuilderFunctions<'a> {
                         #builder_name <
                             #fn_lifetime,
                             #(#lifetimes,)*
-                            #ty_tokens
+                            #ty_tokens_
                             #(#after_generics,)*
                             AsyncFieldMarker,
                             ValidatorOption
@@ -195,7 +224,9 @@ impl<'a> BuilderFunctions<'a> {
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type {
+                #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type
+                #fn_where_clause
+                {
                     #ret_expr
                 }
             }
@@ -216,7 +247,7 @@ impl<'a> BuilderFunctions<'a> {
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
         let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
+        let ty_tokens = self.input.tokenize_types(&[]);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
@@ -306,7 +337,7 @@ impl<'a> BuilderFunctions<'a> {
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
         let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
+        let ty_tokens = self.input.tokenize_types(&[]);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<

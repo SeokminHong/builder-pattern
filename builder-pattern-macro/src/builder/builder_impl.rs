@@ -77,7 +77,7 @@ impl<'a> BuilderImpl<'a> {
         let impl_tokens = self.input.tokenize_impl();
         let optional_generics = self.optional_generics().collect::<Vec<_>>();
         let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
-        let ty_tokens = self.input.tokenize_types();
+        let ty_tokens = self.input.tokenize_types(&[]);
 
         let mut struct_init_args = vec![];
         let mut validated_init_fields = vec![];

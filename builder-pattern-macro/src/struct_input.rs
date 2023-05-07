@@ -13,6 +13,7 @@ use syn::{
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
     VisPublic, Visibility,
 };
+use syn::{Path, PredicateType, Type, TypePath, WhereClause, WherePredicate};
 
 pub struct StructInput {
     pub vis: Visibility,
@@ -151,7 +152,7 @@ impl StructInput {
 
     /// Tokenize type parameters.
     /// It skips lifetimes and has no outer brackets.
-    pub fn tokenize_types(&self) -> TokenStream {
+    pub fn tokenize_types(&self, replace_generics: &[Ident]) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
@@ -177,7 +178,13 @@ impl StructInput {
                 GenericParam::Lifetime(_) => unreachable!(),
                 GenericParam::Type(param) => {
                     // Leave off the type parameter defaults
-                    param.ident.to_tokens(&mut tokens);
+                    if replace_generics.contains(&param.ident) {
+                        let str = param.ident.to_string() + "_";
+                        let ident = Ident::new(&str, param.ident.span());
+                        ident.to_tokens(&mut tokens);
+                    } else {
+                        param.ident.to_tokens(&mut tokens);
+                    }
                 }
                 GenericParam::Const(param) => {
                     // Leave off the const parameter defaults
@@ -188,6 +195,52 @@ impl StructInput {
         }
         <Token![,]>::default().to_tokens(&mut tokens);
         tokens
+    }
+
+    pub fn setter_where_clause(&self, replace_generics: &[Ident]) -> TokenStream {
+        let mut stream = TokenStream::new();
+        if replace_generics.is_empty() {
+            return stream;
+        }
+        let clauses = self
+            .generics
+            .where_clause
+            .iter()
+            .flat_map(|where_clause: &WhereClause| {
+                where_clause
+                    .predicates
+                    .iter()
+                    .filter_map(|x: &WherePredicate| match x {
+                        WherePredicate::Type(PredicateType {
+                            bounded_ty: Type::Path(TypePath { qself: None, path }),
+                            bounds,
+                            lifetimes,
+                            colon_token,
+                            ..
+                        }) => {
+                            if let Some(ident) = path.get_ident() {
+                                let ident_ = ident.to_string() + "_";
+                                let replacement_ident = Ident::new(&ident_, ident.span());
+                                let pred = WherePredicate::Type(PredicateType {
+                                    bounded_ty: Type::Path(TypePath {
+                                        qself: None,
+                                        path: Path::from(replacement_ident),
+                                    }),
+                                    bounds: bounds.clone(),
+                                    lifetimes: lifetimes.clone(),
+                                    colon_token: colon_token.clone(),
+                                });
+                                Some(quote! { #pred })
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    })
+            });
+        stream.extend(quote! { where });
+        stream.append_terminated(clauses, quote! { , });
+        stream
     }
 
     /// Tokenize parameters for `impl` blocks.

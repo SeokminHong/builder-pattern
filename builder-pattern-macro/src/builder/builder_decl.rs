@@ -24,7 +24,7 @@ impl<'a> ToTokens for BuilderDecl<'a> {
 
         let impl_tokens = self.input.tokenize_impl();
         let all_generics = self.input.all_generics().collect::<Vec<_>>();
-        let ty_tokens = self.input.tokenize_types();
+        let ty_tokens = self.input.tokenize_types(&[]);
 
         let fn_lifetime = self.input.fn_lifetime();
         let builder_fields = self.input.builder_fields(&fn_lifetime);

@@ -30,7 +30,8 @@ extern crate proc_macro2;
         into,
         public,
         setter,
-        validator
+        validator,
+        replace_generics,
     )
 )]
 pub fn derive_builder(input: TokenStream) -> TokenStream {

@@ -1,9 +1,9 @@
 use super::attributes::FieldAttributes;
 
 use core::cmp::Ordering;
-use proc_macro2::Ident;
-use quote::ToTokens;
-use syn::{Attribute, Type, Visibility};
+use proc_macro2::{Ident, TokenStream};
+use quote::{ToTokens, TokenStreamExt};
+use syn::{Attribute, Token, Type, Visibility};
 
 pub struct Field {
     pub vis: Visibility,
@@ -29,6 +29,21 @@ impl Field {
         } else {
             ty_token.to_string()
         }
+    }
+
+    pub fn tokenize_replacement_params(&self) -> TokenStream {
+        let mut stream = TokenStream::new();
+        if self.attrs.replace_generics.is_empty() {
+            return stream;
+        }
+        let underscored = self.attrs.replace_generics.iter().map(|ident| {
+            let string = ident.to_string() + "_";
+            Ident::new(&string, ident.span())
+        });
+        <Token![<]>::default().to_tokens(&mut stream);
+        stream.append_terminated(underscored, <Token![,]>::default());
+        <Token![>]>::default().to_tokens(&mut stream);
+        stream
     }
 }
 
