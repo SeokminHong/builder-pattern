@@ -1,7 +1,10 @@
-use crate::{attributes::Setters, struct_input::StructInput};
+use crate::{
+    attributes::Setters, builder::builder_functions::replace_type_params_in,
+    struct_input::StructInput,
+};
 
 use core::str::FromStr;
-use proc_macro2::TokenStream;
+use proc_macro2::{Group, Ident, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
@@ -15,13 +18,44 @@ impl<'a> ToTokens for StructImpl<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.input.ident;
         let vis = &self.input.vis;
-        let where_clause = &self.input.generics.where_clause;
         let builder_name = self.input.builder_name();
 
         let lifetimes = self.input.lifetimes();
-        let impl_tokens = self.input.tokenize_impl();
         let empty_generics = self.empty_generics();
-        let ty_tokens = self.input.tokenize_types(&[]);
+        let defaulted_generics = self.defaulted_generics();
+        let with_param_default = |ident: &Ident| {
+            self.input
+                .generics
+                .type_params()
+                .find_map(|x| {
+                    if x.ident == *ident {
+                        let default = x.default.as_ref().unwrap();
+                        let stream = quote! { #default };
+                        Some(TokenTree::Group(Group::new(
+                            proc_macro2::Delimiter::None,
+                            stream,
+                        )))
+                    } else {
+                        None
+                    }
+                })
+                .expect("hmmmm")
+        };
+
+        let impl_tokens = self.input.tokenize_impl(&defaulted_generics);
+
+        let where_clause = &self.input.generics.where_clause;
+        let where_tokens = replace_type_params_in(
+            quote! { #where_clause },
+            &defaulted_generics,
+            &with_param_default,
+        );
+
+        let ty_tokens = replace_type_params_in(
+            self.input.tokenize_types(&[], false),
+            &defaulted_generics,
+            &with_param_default,
+        );
 
         let fn_lifetime = self.input.fn_lifetime();
 
@@ -29,7 +63,7 @@ impl<'a> ToTokens for StructImpl<'a> {
         let docs = self.documents();
 
         tokens.extend(quote! {
-            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
+            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_tokens {
                 #(#docs)*
                 #[allow(clippy::new_ret_no_self)]
                 #vis fn new<#fn_lifetime>() -> #builder_name<
@@ -139,5 +173,14 @@ impl<'a> StructImpl<'a> {
         }
 
         docs
+    }
+
+    fn defaulted_generics(&self) -> Vec<Ident> {
+        self.input
+            .generics
+            .type_params()
+            .filter(|x| x.default.is_some())
+            .map(|x| x.ident.clone())
+            .collect()
     }
 }

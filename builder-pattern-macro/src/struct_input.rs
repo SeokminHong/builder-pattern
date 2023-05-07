@@ -1,4 +1,4 @@
-use crate::attributes::{FieldAttributes, FieldVisibility};
+use crate::attributes::{ident_add_underscore, FieldAttributes, FieldVisibility};
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -152,11 +152,20 @@ impl StructInput {
 
     /// Tokenize type parameters.
     /// It skips lifetimes and has no outer brackets.
-    pub fn tokenize_types(&self, replace_generics: &[Ident]) -> TokenStream {
+    pub fn tokenize_types(&self, replace_generics: &[Ident], omit_replaced: bool) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
         if generics.params.is_empty() {
+            return tokens;
+        }
+        if omit_replaced
+            && generics.params.iter().all(|x| match x {
+                GenericParam::Type(param) => replace_generics.contains(&param.ident),
+                GenericParam::Const(_) => false,
+                _ => true,
+            })
+        {
             return tokens;
         }
 
@@ -179,9 +188,10 @@ impl StructInput {
                 GenericParam::Type(param) => {
                     // Leave off the type parameter defaults
                     if replace_generics.contains(&param.ident) {
-                        let str = param.ident.to_string() + "_";
-                        let ident = Ident::new(&str, param.ident.span());
-                        ident.to_tokens(&mut tokens);
+                        if omit_replaced {
+                            continue;
+                        }
+                        ident_add_underscore(&param.ident).to_tokens(&mut tokens);
                     } else {
                         param.ident.to_tokens(&mut tokens);
                     }
@@ -245,9 +255,20 @@ impl StructInput {
 
     /// Tokenize parameters for `impl` blocks.
     /// It doesn't contain outer brackets, but lifetimes and trait bounds.
-    pub fn tokenize_impl(&self) -> TokenStream {
+    pub fn tokenize_impl(&self, filter_out: &[Ident]) -> TokenStream {
         let mut tokens = TokenStream::new();
         let generics = &self.generics;
+
+        if generics.params.is_empty() {
+            return tokens;
+        }
+        if generics.params.iter().all(|x| match x {
+            GenericParam::Type(param) => filter_out.contains(&param.ident),
+            GenericParam::Const(_) => false,
+            _ => true,
+        }) {
+            return tokens;
+        }
 
         let mut trailing_or_empty = true;
         for param in generics.params.pairs() {
@@ -267,6 +288,9 @@ impl StructInput {
             match *param.value() {
                 GenericParam::Lifetime(_) => unreachable!(),
                 GenericParam::Type(param) => {
+                    if filter_out.contains(&param.ident) {
+                        continue;
+                    }
                     // Leave off the type parameter defaults
                     tokens.append_all(param.attrs.iter().filter(|attr| match attr.style {
                         AttrStyle::Outer => true,

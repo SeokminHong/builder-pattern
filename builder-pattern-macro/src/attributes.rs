@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use proc_macro2::TokenTree;
 use syn::{Attribute, Expr, Ident, Meta, NestedMeta};
 
 bitflags! {
@@ -24,6 +25,15 @@ pub struct FieldAttributes {
     pub setters: Setters,
     pub vis: FieldVisibility,
     pub replace_generics: Vec<Ident>,
+}
+
+pub fn ident_add_underscore(ident: &Ident) -> Ident {
+    let ident_ = ident.to_string() + "_";
+    Ident::new(&ident_, ident.span())
+}
+
+pub fn ident_add_underscore_tree(ident: &Ident) -> TokenTree {
+    TokenTree::Ident(ident_add_underscore(ident))
 }
 
 impl Default for FieldAttributes {

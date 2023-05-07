@@ -1,11 +1,11 @@
 use crate::{
-    attributes::{FieldVisibility, Setters},
+    attributes::{ident_add_underscore_tree, FieldVisibility, Setters},
     field::Field,
     struct_input::StructInput,
 };
 
 use core::str::FromStr;
-use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
+use proc_macro2::{Group, Ident, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
@@ -52,20 +52,20 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
     }
 }
 
-fn replace_type_params_in(stream: TokenStream, replacements: &[Ident]) -> TokenStream {
+pub fn replace_type_params_in(
+    stream: TokenStream,
+    replacements: &[Ident],
+    with: &impl Fn(&Ident) -> TokenTree,
+) -> TokenStream {
     stream
         .into_iter()
         .map(|tt| match tt {
             TokenTree::Group(g) => {
                 let delim = g.delimiter();
-                let stream = replace_type_params_in(g.stream(), replacements);
+                let stream = replace_type_params_in(g.stream(), replacements, with);
                 TokenTree::Group(Group::new(delim, stream))
             }
-            TokenTree::Ident(ident) if replacements.contains(&ident) => {
-                let ident_ = ident.to_string() + "_";
-                let ident = Ident::new(&ident_, ident.span());
-                TokenTree::Ident(ident)
-            }
+            TokenTree::Ident(ident) if replacements.contains(&ident) => with(&ident),
             x => x,
         })
         .collect()
@@ -125,18 +125,26 @@ impl<'a> BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types(&[]);
-        let ty_tokens_ = self.input.tokenize_types(&f.attrs.replace_generics);
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
+        let ty_tokens_ = self.input.tokenize_types(&f.attrs.replace_generics, false);
         let fn_generics = f.tokenize_replacement_params();
         let fn_where_clause = self.input.setter_where_clause(&f.attrs.replace_generics);
         let (other_generics, before_generics, mut after_generics) = self.get_generics(f, index);
-        let replaced_ty = replace_type_params_in(quote! { #orig_ty }, &f.attrs.replace_generics);
+        let replaced_ty = replace_type_params_in(
+            quote! { #orig_ty },
+            &f.attrs.replace_generics,
+            &ident_add_underscore_tree,
+        );
         after_generics
             .iter_mut()
             .for_each(|ty_tokens: &mut TokenStream| {
                 let tokens = std::mem::take(ty_tokens);
-                *ty_tokens = replace_type_params_in(tokens, &f.attrs.replace_generics);
+                *ty_tokens = replace_type_params_in(
+                    tokens,
+                    &f.attrs.replace_generics,
+                    &ident_add_underscore_tree,
+                );
             });
         let (arg_type_gen, arg_type) = if f.attrs.use_into {
             (
@@ -246,8 +254,8 @@ impl<'a> BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types(&[]);
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
@@ -336,8 +344,8 @@ impl<'a> BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types(&[]);
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<

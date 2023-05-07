@@ -74,10 +74,10 @@ impl<'a> BuilderImpl<'a> {
 
         let fn_lifetime = self.input.fn_lifetime();
 
-        let impl_tokens = self.input.tokenize_impl();
+        let impl_tokens = self.input.tokenize_impl(&[]);
         let optional_generics = self.optional_generics().collect::<Vec<_>>();
         let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
-        let ty_tokens = self.input.tokenize_types(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
 
         let mut struct_init_args = vec![];
         let mut validated_init_fields = vec![];

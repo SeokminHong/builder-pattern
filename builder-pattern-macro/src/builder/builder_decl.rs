@@ -22,9 +22,9 @@ impl<'a> ToTokens for BuilderDecl<'a> {
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
 
-        let impl_tokens = self.input.tokenize_impl();
+        let impl_tokens = self.input.tokenize_impl(&[]);
         let all_generics = self.input.all_generics().collect::<Vec<_>>();
-        let ty_tokens = self.input.tokenize_types(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
 
         let fn_lifetime = self.input.fn_lifetime();
         let builder_fields = self.input.builder_fields(&fn_lifetime);
