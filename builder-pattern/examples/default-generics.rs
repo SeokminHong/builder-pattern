@@ -109,7 +109,10 @@ fn infer_using_fold() {
     let _ = fold_with_closure(
         core::iter::once(&5i32),
         0,
-        DefaultedClosure::new().mandatory(|acc, &x| acc + x).build(),
+        DefaultedClosure::new()
+            .mandatory(|acc, &x| acc + x)
+            .optional(|_acc, &x| x)
+            .build(),
     );
 }
 

@@ -96,7 +96,10 @@ impl<'a> StructImpl<'a> {
                     } else {
                         match *setters {
                             Setters::VALUE => quote_spanned! { expr.span() =>
-                                #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
+                                #ident: Some(::builder_pattern::setter::Setter::Default(
+                                    #expr,
+                                    ::builder_pattern::refl::refl()
+                                ))
                             },
                             Setters::LAZY => {
                                 quote_spanned! { expr.span() =>

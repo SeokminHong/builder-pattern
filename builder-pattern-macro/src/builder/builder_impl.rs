@@ -110,7 +110,19 @@ impl<'a> BuilderImpl<'a> {
                                 _ => unimplemented!(),
                             };
                             let wrapped_expr = wrap(expr);
-                            quote! { None => { let val: #substituted_ty = #wrapped_expr; val }, }
+                            quote! {
+                                None => { let val: #ty = #wrapped_expr; val },
+                                Some(::builder_pattern::setter::Setter::Default(..)) =>
+                                    unreachable!("late-bound optional field was set in new()"),
+                            }
+                        }
+                        Some((_expr, _setters)) => {
+                            quote! {
+                                None => unreachable!("early-bound optional field had no default set in new()"),
+                                Some(::builder_pattern::setter::Setter::Default(t, id_t_d)) => {
+                                    t
+                                }
+                            }
                         }
                         _ => quote! { None => unreachable!("required field not set"), },
                     };

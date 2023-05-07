@@ -1,7 +1,15 @@
 #[cfg(feature = "future")]
 use futures::future::LocalBoxFuture;
 
-pub enum Setter<'a, T> {
+use super::refl::Id;
+
+pub enum Setter<'a, T, D = T> {
+    // Initially, T = D.
+    // If you set a value with an #[infer(T)] setter,
+    // then T gets replaced with an inferred type, and we
+    // no longer _know_ that T = D. It could still be.
+    // But we will store a Setter::Value, so the Id<T, D> is gone.
+    Default(T, Id<T, D>),
     Value(T),
     Lazy(Box<dyn 'a + FnOnce() -> T>),
     LazyValidated(Box<dyn 'a + FnOnce() -> Result<T, &'static str>>),

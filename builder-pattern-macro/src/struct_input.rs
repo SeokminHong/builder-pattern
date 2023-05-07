@@ -143,13 +143,21 @@ impl StructInput {
         &'a self,
         fn_lifetime: &'a Lifetime,
     ) -> impl 'a + Iterator<Item = TokenStream> {
+        // TODO: just store defaulted_generics in a field
+        let defaulted_generics = self.defaulted_generics();
+        let defaulted_generics2 = defaulted_generics.clone();
+        let with_prmdef = move |ident: &Ident| self.with_param_default(&defaulted_generics, ident);
+        let replace_defaults = move |stream: TokenStream| {
+            replace_type_params_in(stream, &defaulted_generics2, &with_prmdef)
+        };
         self.required_fields
             .iter()
             .chain(self.optional_fields.iter())
             .map(move |f| {
                 let (ident, ty) = (&f.ident, &f.ty);
+                let subst = replace_defaults(quote! { #ty });
                 quote! {
-                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
+                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty, #subst>>
                 }
             })
     }
