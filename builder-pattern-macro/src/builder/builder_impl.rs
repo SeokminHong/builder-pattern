@@ -1,11 +1,9 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
 use core::str::FromStr;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{spanned::Spanned, Type};
-
-use super::builder_functions::replace_type_params_in;
+use syn::spanned::Spanned;
 
 pub struct BuilderImpl<'a> {
     pub input: &'a StructInput,
@@ -80,11 +78,6 @@ impl<'a> BuilderImpl<'a> {
         let impl_tokens = self.input.tokenize_impl(&[]);
         let optional_generics = self.optional_generics().collect::<Vec<_>>();
         let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
-        let defaulted_generics = self.input.defaulted_generics();
-
-        let with_prmdef = |ident: &Ident| self.input.with_param_default(&defaulted_generics, ident);
-        let replace_defaults =
-            |stream: TokenStream| replace_type_params_in(stream, &defaulted_generics, &with_prmdef);
 
         let ty_tokens = self.input.tokenize_types(&[], false);
 

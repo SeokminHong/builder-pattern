@@ -4,9 +4,9 @@ use crate::{
 };
 
 use core::str::FromStr;
-use proc_macro2::{Group, Ident, TokenStream, TokenTree};
+use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
-use syn::{parse_quote, spanned::Spanned, Attribute, Generics};
+use syn::{parse_quote, spanned::Spanned, Attribute};
 
 /// Implementation for the given structure.
 /// It creates a `new` function.
@@ -92,7 +92,7 @@ impl<'a> StructImpl<'a> {
             .chain(self.input.optional_fields.iter().map(|f| {
                 if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
                     if f.attrs.late_bound_default {
-                        quote_spanned! { expr.span() => 
+                        quote_spanned! { expr.span() =>
                             #ident: Some(::builder_pattern::setter::Setter::LateBoundDefault(
                                 ::builder_pattern::refl::refl()
                             ))
