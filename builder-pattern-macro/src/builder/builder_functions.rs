@@ -23,7 +23,7 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .map(|f| {
                 let ident = &f.ident;
                 if f.attrs.vis == FieldVisibility::Hidden {
-                    quote!{ #ident: None }
+                    quote! { #ident: None }
                 } else {
                     quote! { #ident: self.#ident }
                 }
@@ -132,7 +132,6 @@ impl<'a> BuilderFunctions<'a> {
         let impl_tokens = self.input.tokenize_impl(&[]);
         let ty_tokens = self.input.tokenize_types(&[], false);
         let ty_tokens_ = self.input.tokenize_types(&f.attrs.infer, false);
-        let fn_generics = f.tokenize_replacement_params();
         let fn_where_clause = self.input.setter_where_clause(&f.attrs.infer);
         let (other_generics, before_generics, mut after_generics) = self.get_generics(f, index);
         let replaced_ty = replace_type_params_in(
@@ -147,13 +146,16 @@ impl<'a> BuilderFunctions<'a> {
                 *ty_tokens =
                     replace_type_params_in(tokens, &f.attrs.infer, &ident_add_underscore_tree);
             });
-        let (arg_type_gen, arg_type) = if f.attrs.use_into {
-            (
-                quote! {<IntoType: Into<#orig_ty>>},
-                TokenStream::from_str("IntoType").unwrap(),
-            )
+        let into_generics = if f.attrs.use_into {
+            vec![quote! {IntoType: Into<#replaced_ty>}]
         } else {
-            (fn_generics, quote! { #replaced_ty })
+            vec![]
+        };
+        let fn_generics = f.tokenize_replacement_params(&into_generics);
+        let arg_type = if f.attrs.use_into {
+            quote! { IntoType }
+        } else {
+            quote! { #replaced_ty }
         };
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -233,7 +235,7 @@ impl<'a> BuilderFunctions<'a> {
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type
+                #vis fn #ident #fn_generics(self, value: #arg_type) -> #ret_type
                 #fn_where_clause
                 {
                     #ret_expr

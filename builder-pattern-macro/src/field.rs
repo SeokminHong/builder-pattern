@@ -33,9 +33,9 @@ impl Field {
         }
     }
 
-    pub fn tokenize_replacement_params(&self) -> TokenStream {
+    pub fn tokenize_replacement_params(&self, additional: &[TokenStream]) -> TokenStream {
         let mut stream = TokenStream::new();
-        if self.attrs.infer.is_empty() {
+        if self.attrs.infer.is_empty() && additional.is_empty() {
             return stream;
         }
         let underscored = self
@@ -45,6 +45,7 @@ impl Field {
             .map(|ident| ident_add_underscore(ident));
         <Token![<]>::default().to_tokens(&mut stream);
         stream.append_terminated(underscored, Comma::default());
+        stream.append_terminated(additional.iter(), Comma::default());
         <Token![>]>::default().to_tokens(&mut stream);
         stream
     }
