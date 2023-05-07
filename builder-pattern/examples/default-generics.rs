@@ -48,6 +48,7 @@ where
 {
     mandatory: F1,
     #[infer(F2)]
+    #[late_bound_default]
     #[default(|r, _t| r)]
     optional: F2,
     #[hidden]

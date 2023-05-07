@@ -92,13 +92,17 @@ impl<'a> StructImpl<'a> {
             .chain(self.input.optional_fields.iter().map(|f| {
                 if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
                     if f.attrs.late_bound_default {
-                        quote_spanned! { expr.span() => #ident: None }
+                        quote_spanned! { expr.span() => 
+                            #ident: Some(::builder_pattern::setter::Setter::LateBoundDefault(
+                                ::builder_pattern::refl::refl()
+                            ))
+                        }
                     } else {
                         match *setters {
                             Setters::VALUE => quote_spanned! { expr.span() =>
                                 #ident: Some(::builder_pattern::setter::Setter::Default(
                                     #expr,
-                                    // ::builder_pattern::refl::refl()
+                                    ::builder_pattern::refl::refl()
                                 ))
                             },
                             Setters::LAZY => {

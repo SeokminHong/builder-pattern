@@ -23,29 +23,19 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .map(|f| {
                 let ident = &f.ident;
                 if f.attrs.late_bound_default {
-                    quote! { #ident: None }
+                    quote! {
+                        #ident: match self.#ident {
+                            Some(::builder_pattern::setter::Setter::LateBoundDefault(d)) => {
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(d))
+                            }
+                            Some(::builder_pattern::setter::Setter::Value(val)) => {
+                                Some(::builder_pattern::setter::Setter::Value(val))
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                 } else if !f.attrs.use_inferred.is_empty() {
                     quote! { #ident: None }
-                    // let Some((expr, _)) = f.attrs.default.as_ref() else {
-                    //     return quote!{ #ident: compile_error!("#[use_inferred] without #[default]"), };
-                    // };
-
-                    // rebind to the #[infer]red type by stamping out the default's syntactic
-                    // representation again in this setter method. e.g. `None` can fit in a slot
-                    // for many different Option<T> types. If you change `T` from the default (e.g.
-                    // f64) to an #[infer]red type (e.g. i32) then you as long as the macro writes
-                    // `None` again, we're good.
-                    // quote! {
-                    //     #ident: match self.#ident {
-                    //         Some(::builder_pattern::setter::Setter::Default(_)) => {
-                    //             Some(::builder_pattern::setter::Setter::Value(#expr))
-                    //         }
-                    //         Some(::builder_pattern::setter::Setter::Value(val)) => {
-                    //             Some(::builder_pattern::setter::Setter::Value(val))
-                    //         }
-                    //         _ => unreachable!(),
-                    //     }
-                    // }
                 } else {
                     quote! { #ident: self.#ident }
                 }

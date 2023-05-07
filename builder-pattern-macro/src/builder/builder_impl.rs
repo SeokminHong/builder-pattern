@@ -99,7 +99,7 @@ impl<'a> BuilderImpl<'a> {
             .for_each(|f| {
                 let ident = &f.ident;
                 let ty = &f.ty;
-                let substituted_ty = replace_defaults(quote! { #ty });
+                // let substituted_ty = replace_defaults(quote! { #ty });
                 struct_init_args.push(ident.to_token_stream());
                 let mk_default_case =
                     |wrap: fn(TokenStream) -> TokenStream| match &f.attrs.default.as_ref() {
@@ -111,7 +111,10 @@ impl<'a> BuilderImpl<'a> {
                             };
                             let wrapped_expr = wrap(expr);
                             quote! {
-                                None => { let val: #substituted_ty = #wrapped_expr; val },
+                                None => unreachable!("field should have had default"),
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(id)) => {
+                                    { let val: #ty = id.cast(#wrapped_expr); val }
+                                }
                                 Some(::builder_pattern::setter::Setter::Default(..)) =>
                                     unreachable!("late-bound optional field was set in new()"),
                             }
@@ -119,7 +122,7 @@ impl<'a> BuilderImpl<'a> {
                         Some((_expr, _setters)) => {
                             quote! {
                                 None => unreachable!("early-bound optional field had no default set in new()"),
-                                Some(::builder_pattern::setter::Setter::Default(d)) => d,
+                                Some(::builder_pattern::setter::Setter::Default(d, id)) => id.cast(d),
                             }
                         }
                         _ => quote! { None => unreachable!("required field not set"), },
