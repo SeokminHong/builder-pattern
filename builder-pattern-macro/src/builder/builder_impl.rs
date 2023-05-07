@@ -3,6 +3,7 @@ use crate::{attributes::Setters, struct_input::StructInput};
 use core::str::FromStr;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
+use syn::spanned::Spanned;
 
 pub struct BuilderImpl<'a> {
     pub input: &'a StructInput,
@@ -90,22 +91,38 @@ impl<'a> BuilderImpl<'a> {
             .for_each(|f| {
                 let ident = &f.ident;
                 struct_init_args.push(ident.to_token_stream());
+                let mk_default_case =
+                    |wrap: fn(TokenStream) -> TokenStream| match &f.attrs.default.as_ref() {
+                        Some((expr, setters)) => {
+                            let expr = match *setters {
+                                Setters::VALUE => quote_spanned! { expr.span() => #expr },
+                                Setters::LAZY => quote_spanned! { expr.span() => (#expr)() },
+                                _ => unimplemented!(),
+                            };
+                            let wrapped_expr = wrap(expr);
+                            quote! { None => #wrapped_expr, }
+                        }
+                        None => quote! { None => unreachable!(), },
+                    };
+
                 if f.attrs.validator.is_some()
                     && !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
                 {
                     let async_case = if is_async {
                         quote! {
-                            ::builder_pattern::setter::Setter::Async(f) => Ok(f().await),
-                            ::builder_pattern::setter::Setter::AsyncValidated(f) => f().await,
+                            Some(::builder_pattern::setter::Setter::Async(f)) => Ok(f().await),
+                            Some(::builder_pattern::setter::Setter::AsyncValidated(f)) => f().await,
                         }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
+                    let default_case = mk_default_case(|expr| quote! { Ok(#expr) });
                     validated_init_fields.push(quote! {
-                        let #ident = match match self.#ident.unwrap() {
-                            ::builder_pattern::setter::Setter::Value(v) => Ok(v),
-                            ::builder_pattern::setter::Setter::Lazy(f) => Ok(f()),
-                            ::builder_pattern::setter::Setter::LazyValidated(f) => f(),
+                        let #ident = match match self.#ident {
+                            Some(::builder_pattern::setter::Setter::Value(v)) => Ok(v),
+                            Some(::builder_pattern::setter::Setter::Lazy(f)) => Ok(f()),
+                            Some(::builder_pattern::setter::Setter::LazyValidated(f)) => f(),
+                            #default_case
                             #async_case
                         } {
                             Ok(v) => v,
@@ -115,32 +132,36 @@ impl<'a> BuilderImpl<'a> {
                 } else {
                     let async_case = if is_async {
                         quote! {
-                            ::builder_pattern::setter::Setter::Async(f) => f().await,
+                            Some(::builder_pattern::setter::Setter::Async(f)) => f().await,
                             _ => unimplemented!(),
                         }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
+                    let default_case = mk_default_case(|expr| expr);
                     init_fields.push(quote! {
-                        let #ident = match self.#ident.unwrap() {
-                            ::builder_pattern::setter::Setter::Value(v) => v,
-                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                        let #ident = match self.#ident {
+                            Some(::builder_pattern::setter::Setter::Value(v)) => v,
+                            Some(::builder_pattern::setter::Setter::Lazy(f)) => f(),
+                            #default_case
                             #async_case
                         };
                     });
                 }
                 let async_case = if is_async {
                     quote! {
-                        ::builder_pattern::setter::Setter::Async(f) => f().await,
+                        Some(::builder_pattern::setter::Setter::Async(f)) => f().await,
                         _ => unimplemented!(),
                     }
                 } else {
                     quote! {_ => unimplemented!()}
                 };
+                let default_case = mk_default_case(|expr| expr);
                 no_lazy_validation_fields.push(quote! {
-                    let #ident = match self.#ident.unwrap() {
-                        ::builder_pattern::setter::Setter::Value(v) => v,
-                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                    let #ident = match self.#ident {
+                        Some(::builder_pattern::setter::Setter::Value(v)) => v,
+                        Some(::builder_pattern::setter::Setter::Lazy(f)) => f(),
+                        #default_case
                         #async_case
                     };
                 });
@@ -159,6 +180,7 @@ impl<'a> BuilderImpl<'a> {
             #where_clause
             {
                 #[allow(dead_code)]
+                #[allow(clippy::redundant_closure_call)]
                 #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
                     #(#no_lazy_validation_fields)*
                     #ident {

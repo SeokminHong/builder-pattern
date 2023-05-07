@@ -118,22 +118,8 @@ impl<'a> StructImpl<'a> {
                 }
             })
             .chain(self.input.optional_fields.iter().map(|f| {
-                if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
-                    match *setters {
-                        Setters::VALUE => quote_spanned! { expr.span() =>
-                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
-                        },
-                        Setters::LAZY => {
-                            quote_spanned! { expr.span() =>
-                                #ident: Some(
-                                    ::builder_pattern::setter::Setter::Lazy(
-                                        Box::new(#expr)
-                                    )
-                                )
-                            }
-                        }
-                        _ => unimplemented!(),
-                    }
+                if let (ident, Some((expr, _setters))) = (&f.ident, &f.attrs.default.as_ref()) {
+                    quote_spanned! { expr.span() => #ident: None }
                 } else {
                     unimplemented!()
                 }

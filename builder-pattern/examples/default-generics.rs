@@ -1,7 +1,7 @@
 use builder_pattern::Builder;
 use std::any::{Any, TypeId};
-use std::borrow::Borrow;
 use std::marker::PhantomData;
+use std::ops::Add;
 
 #[allow(unused)]
 #[derive(Builder)]
@@ -41,26 +41,34 @@ fn inferred() {
 
 #[allow(unused)]
 #[derive(Builder)]
-struct DefaultedClosure<T, R, F = fn(R, &T) -> R>
+struct DefaultedClosure<F1, T, R, F2 = fn(R, &T) -> R>
 where
-    F: for<'a> FnMut(R, &T) -> R,
+    F1: for<'a> FnMut(R, &T) -> R,
+    F2: for<'a> FnMut(R, &T) -> R,
 {
-    #[infer(F)]
-    f: Option<F>,
+    mandatory: F1,
+    #[infer(F2)]
+    #[default(None)]
+    optional: Option<F2>,
     #[hidden]
-    #[default(PhantomData)]
+    #[default_lazy(|| PhantomData)]
     phantom: PhantomData<(T, R)>,
 }
 
 trait Callable<T, R> {
     fn call_fn(&mut self, r: R, t: &T) -> R;
+    fn call_inverse(&mut self, r: R, t: &T) -> R;
 }
-impl<T, R, F> Callable<T, R> for DefaultedClosure<T, R, F>
+impl<F1, T, R, F2> Callable<T, R> for DefaultedClosure<F1, T, R, F2>
 where
-    F: for<'a> FnMut(R, &T) -> R,
+    F1: for<'a> FnMut(R, &T) -> R,
+    F2: for<'a> FnMut(R, &T) -> R,
 {
     fn call_fn(&mut self, r: R, t: &T) -> R {
-        if let Some(f) = &mut self.f {
+        (self.mandatory)(r, t)
+    }
+    fn call_inverse(&mut self, r: R, t: &T) -> R {
+        if let Some(f) = &mut self.optional {
             f(r, t)
         } else {
             r
@@ -68,16 +76,82 @@ where
     }
 }
 
-fn infer_f_t() {
-    let mut a = DefaultedClosure::new()
-        .f(Some(|acc, x: &_| acc + x))
+fn accumulate_sum<T>(acc: T, next: &T) -> T
+where
+    T: for<'a> Add<&'a T, Output = T>,
+{
+    acc + next
+}
+
+fn infer_f_generic() {
+    let mut _a = DefaultedClosure::new()
+        .mandatory(|acc: f64, x| acc + x)
+        .optional(Some(accumulate_sum))
         .build();
-    let called: i32 = a.call_fn(5, &5);
+}
+
+fn infer_f_missing() {
+    let mut _a = DefaultedClosure::new()
+        .mandatory(|acc: f64, x| acc + x)
+        .build();
+}
+
+fn fold_with_closure<'b, F1, T: 'b, R, F2>(
+    iter: impl Iterator<Item = &'b T>,
+    init: R,
+    mut c: DefaultedClosure<F1, T, R, F2>,
+) -> R
+where
+    F1: for<'a> FnMut(R, &T) -> R,
+    F2: for<'a> FnMut(R, &T) -> R,
+{
+    iter.fold(init, move |acc, x| c.call_fn(acc, x))
+}
+
+fn infer_using_fold() {
+    let _ = fold_with_closure(
+        core::iter::once(&5i32),
+        0,
+        DefaultedClosure::new().mandatory(|acc, &x| acc + x).build(),
+    );
+}
+
+fn infer_before_fold() {
+    let folder = DefaultedClosure::new().mandatory(|acc, &x| acc + x).build();
+    let _ = fold_with_closure(core::iter::once(&5i32), 0, folder);
+}
+
+fn infer_t_r() {
+    let mut a = DefaultedClosure::new()
+        // The types of the closure params should be inferred
+        .mandatory(|acc, x| acc + x)
+        .build();
+    let _called: i32 = a.call_fn(5i32, &5);
+}
+
+fn build_with_optional_new_type() {
+    let mut captured = String::from("hello");
+    let mut a = DefaultedClosure::new()
+        // The types of the closure params should be inferred
+        .mandatory(|acc, x| acc + x)
+        // These ones can't be inferred so easily, apparently. We need to use &_ to force the
+        // closure to be : for<'a> FnMut(..)
+        .optional(Some(move |acc, x: &_| {
+            captured.push_str("hello");
+            acc - x
+        }))
+        .build();
+    let _called: i32 = a.call_fn(5i32, &5);
 }
 
 fn main() {
     defaulted();
     override_default();
     inferred();
-    infer_f_t();
+    infer_f_generic();
+    infer_f_missing();
+    infer_using_fold();
+    infer_before_fold();
+    build_with_optional_new_type();
+    infer_t_r();
 }

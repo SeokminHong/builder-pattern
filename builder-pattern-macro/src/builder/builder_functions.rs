@@ -22,7 +22,11 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .chain(self.input.optional_fields.iter())
             .map(|f| {
                 let ident = &f.ident;
-                quote! { #ident: self.#ident }
+                if f.attrs.vis == FieldVisibility::Hidden {
+                    quote!{ #ident: None }
+                } else {
+                    quote! { #ident: self.#ident }
+                }
             })
             .collect::<Vec<_>>();
 

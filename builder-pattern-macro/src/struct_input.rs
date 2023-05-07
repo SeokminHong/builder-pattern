@@ -173,19 +173,9 @@ impl StructInput {
             return tokens;
         }
 
-        let mut trailing_or_empty = true;
-        for param in generics.params.pairs() {
-            if let GenericParam::Lifetime(_) = *param.value() {
-                trailing_or_empty = param.punct().is_some();
-            }
-        }
         for param in generics.params.pairs() {
             if let GenericParam::Lifetime(_) = **param.value() {
                 continue;
-            }
-            if !trailing_or_empty {
-                <Token![,]>::default().to_tokens(&mut tokens);
-                trailing_or_empty = true;
             }
             match *param.value() {
                 GenericParam::Lifetime(_) => unreachable!(),
@@ -205,9 +195,8 @@ impl StructInput {
                     param.ident.to_tokens(&mut tokens);
                 }
             }
-            param.punct().to_tokens(&mut tokens);
+            Comma::default().to_tokens(&mut tokens);
         }
-        <Token![,]>::default().to_tokens(&mut tokens);
         tokens
     }
 
