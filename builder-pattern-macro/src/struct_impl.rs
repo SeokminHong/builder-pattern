@@ -19,35 +19,11 @@ impl<'a> ToTokens for StructImpl<'a> {
 
         let lifetimes = self.input.lifetimes();
         let empty_generics = self.empty_generics();
-        let defaulted_generics = self.defaulted_generics();
-        fn with_param_default(
-            generics: &Generics,
-            defaulted_generics: &[Ident],
-            ident: &Ident,
-        ) -> TokenTree {
-            let with_prmdef =
-                |ident: &Ident| with_param_default(&generics, defaulted_generics, ident);
-            generics
-                .type_params()
-                .find_map(|x| {
-                    if x.ident == *ident {
-                        let default = x.default.as_ref().unwrap();
-                        let stream = quote! { #default };
-                        let replaced_within =
-                            replace_type_params_in(stream, defaulted_generics, &with_prmdef);
-                        Some(TokenTree::Group(Group::new(
-                            proc_macro2::Delimiter::None,
-                            replaced_within,
-                        )))
-                    } else {
-                        None
-                    }
-                })
-                .expect("hmmmm")
-        }
+        let defaulted_generics = self.input.defaulted_generics();
 
-        let with_prmdef =
-            |ident: &Ident| with_param_default(&self.input.generics, &defaulted_generics, ident);
+        let with_prmdef = |ident: &Ident| self.input.with_param_default(&defaulted_generics, ident);
+        let replace_defaults =
+            |stream: TokenStream| replace_type_params_in(stream, &defaulted_generics, &with_prmdef);
 
         let impl_tokens = self.input.tokenize_impl(&defaulted_generics);
 
@@ -55,11 +31,7 @@ impl<'a> ToTokens for StructImpl<'a> {
         let where_tokens =
             replace_type_params_in(quote! { #where_clause }, &defaulted_generics, &with_prmdef);
 
-        let ty_tokens = replace_type_params_in(
-            self.input.tokenize_types(&[], false),
-            &defaulted_generics,
-            &with_prmdef,
-        );
+        let ty_tokens = replace_defaults(self.input.tokenize_types(&[], false));
 
         let fn_lifetime = self.input.fn_lifetime();
 
@@ -163,14 +135,5 @@ impl<'a> StructImpl<'a> {
         }
 
         docs
-    }
-
-    fn defaulted_generics(&self) -> Vec<Ident> {
-        self.input
-            .generics
-            .type_params()
-            .filter(|x| x.default.is_some())
-            .map(|x| x.ident.clone())
-            .collect()
     }
 }

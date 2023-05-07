@@ -1,9 +1,11 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
 use core::str::FromStr;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use syn::{spanned::Spanned, Type};
+
+use super::builder_functions::replace_type_params_in;
 
 pub struct BuilderImpl<'a> {
     pub input: &'a StructInput,
@@ -78,6 +80,12 @@ impl<'a> BuilderImpl<'a> {
         let impl_tokens = self.input.tokenize_impl(&[]);
         let optional_generics = self.optional_generics().collect::<Vec<_>>();
         let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
+        let defaulted_generics = self.input.defaulted_generics();
+
+        let with_prmdef = |ident: &Ident| self.input.with_param_default(&defaulted_generics, ident);
+        let replace_defaults =
+            |stream: TokenStream| replace_type_params_in(stream, &defaulted_generics, &with_prmdef);
+
         let ty_tokens = self.input.tokenize_types(&[], false);
 
         let mut struct_init_args = vec![];
@@ -91,17 +99,18 @@ impl<'a> BuilderImpl<'a> {
             .for_each(|f| {
                 let ident = &f.ident;
                 let ty = &f.ty;
+                let substituted_ty = replace_defaults(quote! { #ty });
                 struct_init_args.push(ident.to_token_stream());
                 let mk_default_case =
-                    |wrap: fn(TokenStream, &Type) -> TokenStream| match &f.attrs.default.as_ref() {
+                    |wrap: fn(TokenStream) -> TokenStream| match &f.attrs.default.as_ref() {
                         Some((expr, setters)) => {
                             let expr = match *setters {
                                 Setters::VALUE => quote_spanned! { expr.span() => #expr },
                                 Setters::LAZY => quote_spanned! { expr.span() => (#expr)() },
                                 _ => unimplemented!(),
                             };
-                            let wrapped_expr = wrap(expr, ty);
-                            quote! { None => #wrapped_expr, }
+                            let wrapped_expr = wrap(expr);
+                            quote! { None => { let val: #substituted_ty = #wrapped_expr; val }, }
                         }
                         None => quote! { None => unreachable!(), },
                     };
@@ -117,7 +126,7 @@ impl<'a> BuilderImpl<'a> {
                     } else {
                         quote! {_ => unimplemented!()}
                     };
-                    let default_case = mk_default_case(|expr, ty| quote! { Ok((#expr) as #ty) });
+                    let default_case = mk_default_case(|expr| quote! { Ok(#expr) });
                     validated_init_fields.push(quote! {
                         let #ident = match match self.#ident {
                             #default_case
@@ -139,7 +148,7 @@ impl<'a> BuilderImpl<'a> {
                     } else {
                         quote! {_ => unimplemented!()}
                     };
-                    let default_case = mk_default_case(|expr, ty| quote! { (#expr) as #ty });
+                    let default_case = mk_default_case(|expr| quote! { #expr });
                     init_fields.push(quote! {
                         let #ident = match self.#ident {
                             #default_case
@@ -157,7 +166,7 @@ impl<'a> BuilderImpl<'a> {
                 } else {
                     quote! {_ => unimplemented!()}
                 };
-                let default_case = mk_default_case(|expr, ty| quote! { (#expr) as #ty });
+                let default_case = mk_default_case(|expr| quote! { #expr });
                 no_lazy_validation_fields.push(quote! {
                     let #ident = match self.#ident {
                         Some(::builder_pattern::setter::Setter::Value(v)) => v,

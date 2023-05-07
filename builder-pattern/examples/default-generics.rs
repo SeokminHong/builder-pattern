@@ -48,8 +48,8 @@ where
 {
     mandatory: F1,
     #[infer(F2)]
-    #[default(None)]
-    optional: Option<F2>,
+    #[default(|r, _t| r)]
+    optional: F2,
     #[hidden]
     #[default_lazy(|| PhantomData)]
     phantom: PhantomData<(T, R)>,
@@ -68,11 +68,8 @@ where
         (self.mandatory)(r, t)
     }
     fn call_inverse(&mut self, r: R, t: &T) -> R {
-        if let Some(f) = &mut self.optional {
-            f(r, t)
-        } else {
-            r
-        }
+        let f = &mut self.optional;
+        f(r, t)
     }
 }
 
@@ -86,7 +83,7 @@ where
 fn infer_f_generic() {
     let mut _a = DefaultedClosure::new()
         .mandatory(|acc: f64, x| acc + x)
-        .optional(Some(accumulate_sum))
+        .optional(accumulate_sum)
         .build();
 }
 
@@ -134,12 +131,10 @@ fn build_with_optional_new_type() {
     let mut a = DefaultedClosure::new()
         // The types of the closure params should be inferred
         .mandatory(|acc, x| acc + x)
-        // These ones can't be inferred so easily, apparently. We need to use &_ to force the
-        // closure to be : for<'a> FnMut(..)
-        .optional(Some(move |acc, x: &_| {
+        .optional(move |acc, x| {
             captured.push_str("hello");
             acc - x
-        }))
+        })
         .build();
     let _called: i32 = a.call_fn(5i32, &5);
 }

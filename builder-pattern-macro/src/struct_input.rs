@@ -9,7 +9,7 @@ use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
 use core::str::FromStr;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Group, Ident, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
 use syn::token::Comma;
 use syn::{
@@ -280,5 +280,34 @@ impl StructInput {
             Comma::default().to_tokens(&mut tokens);
         }
         tokens
+    }
+
+    pub fn defaulted_generics(&self) -> Vec<Ident> {
+        self.generics
+            .type_params()
+            .filter(|x| x.default.is_some())
+            .map(|x| x.ident.clone())
+            .collect()
+    }
+
+    pub fn with_param_default(&self, defaulted_generics: &[Ident], ident: &Ident) -> TokenTree {
+        let with_prmdef = |ident: &Ident| self.with_param_default(defaulted_generics, ident);
+        self.generics
+            .type_params()
+            .find_map(|x| {
+                if x.ident == *ident {
+                    let default = x.default.as_ref().unwrap();
+                    let stream = quote! { #default };
+                    let replaced_within =
+                        replace_type_params_in(stream, defaulted_generics, &with_prmdef);
+                    Some(TokenTree::Group(Group::new(
+                        proc_macro2::Delimiter::None,
+                        replaced_within,
+                    )))
+                } else {
+                    None
+                }
+            })
+            .expect("hmmmm")
     }
 }
