@@ -74,7 +74,7 @@ impl<'a> ToTokens for StructImpl<'a> {
                     #fn_lifetime,
                     #(#lifetimes,)*
                     #ty_tokens
-                    #(#empty_generics),*,
+                    #(#empty_generics,)*
                     (),
                     ()
                 > {
