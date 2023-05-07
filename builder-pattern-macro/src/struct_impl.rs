@@ -98,7 +98,7 @@ impl<'a> StructImpl<'a> {
                             Setters::VALUE => quote_spanned! { expr.span() =>
                                 #ident: Some(::builder_pattern::setter::Setter::Default(
                                     #expr,
-                                    ::builder_pattern::refl::refl()
+                                    // ::builder_pattern::refl::refl()
                                 ))
                             },
                             Setters::LAZY => {

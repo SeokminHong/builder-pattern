@@ -32,6 +32,8 @@ extern crate proc_macro2;
         setter,
         validator,
         infer,
+        use_inferred,
+        late_bound_default,
     )
 )]
 pub fn derive_builder(input: TokenStream) -> TokenStream {

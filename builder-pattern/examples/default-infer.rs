@@ -3,17 +3,16 @@ use std::marker::PhantomData;
 
 #[allow(unused)]
 #[derive(Builder)]
-struct Inferred<A = f64, B = String> {
+struct Inferred<A = f64, B = String, F: FnMut(B) -> B = fn(B) -> B> {
     #[infer(A)]
     a: A,
     #[infer(B)]
     b: B,
-    // #[hidden]
-    #[syntactic_default]
-    #[default(PhantomData)]
-    b_default: PhantomData<B>,
+    #[late_bound_default]
+    #[default(|x| x)]
+    b_default: F,
 }
 
 fn main() {
-    let i = Inferred::new().a(5i32).b(String::new()).build();
+    let i = Inferred::new().b(String::new()).a("5").build();
 }
