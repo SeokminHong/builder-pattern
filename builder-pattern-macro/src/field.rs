@@ -1,9 +1,11 @@
+use crate::attributes::ident_add_underscore;
+
 use super::attributes::FieldAttributes;
 
 use core::cmp::Ordering;
-use proc_macro2::Ident;
-use quote::ToTokens;
-use syn::{Attribute, Type, Visibility};
+use proc_macro2::{Ident, TokenStream};
+use quote::{ToTokens, TokenStreamExt};
+use syn::{token::Comma, Attribute, Token, Type, Visibility};
 
 pub struct Field {
     pub vis: Visibility,
@@ -29,6 +31,23 @@ impl Field {
         } else {
             ty_token.to_string()
         }
+    }
+
+    pub fn tokenize_replacement_params(&self, additional: &[TokenStream]) -> TokenStream {
+        let mut stream = TokenStream::new();
+        if self.attrs.infer.is_empty() && additional.is_empty() {
+            return stream;
+        }
+        let underscored = self
+            .attrs
+            .infer
+            .iter()
+            .map(|ident| ident_add_underscore(ident));
+        <Token![<]>::default().to_tokens(&mut stream);
+        stream.append_terminated(underscored, Comma::default());
+        stream.append_terminated(additional.iter(), Comma::default());
+        <Token![>]>::default().to_tokens(&mut stream);
+        stream
     }
 }
 

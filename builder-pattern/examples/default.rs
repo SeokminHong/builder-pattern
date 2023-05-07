@@ -1,6 +1,7 @@
 use builder_pattern::Builder;
 use uuid::Uuid;
 
+#[allow(unused)]
 #[derive(Builder, Debug)]
 struct Test {
     #[default(String::from("Jack"))]

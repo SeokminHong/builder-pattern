@@ -17,6 +17,7 @@ use builder_pattern::Builder;
 ///
 /// println!("{:?}", person);
 /// ```
+#[allow(unused)]
 #[derive(Builder, Debug)]
 struct Person {
     /**
