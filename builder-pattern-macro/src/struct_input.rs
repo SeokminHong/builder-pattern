@@ -1,4 +1,7 @@
-use crate::attributes::{ident_add_underscore, FieldAttributes, FieldVisibility};
+use crate::attributes::{
+    ident_add_underscore, ident_add_underscore_tree, FieldAttributes, FieldVisibility,
+};
+use crate::builder::builder_functions::replace_type_params_in;
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -8,6 +11,7 @@ use crate::struct_impl::StructImpl;
 use core::str::FromStr;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
+use syn::token::Comma;
 use syn::{
     parse::{Parse, ParseStream, Result},
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
@@ -217,36 +221,9 @@ impl StructInput {
             .where_clause
             .iter()
             .flat_map(|where_clause: &WhereClause| {
-                where_clause
-                    .predicates
-                    .iter()
-                    .filter_map(|x: &WherePredicate| match x {
-                        WherePredicate::Type(PredicateType {
-                            bounded_ty: Type::Path(TypePath { qself: None, path }),
-                            bounds,
-                            lifetimes,
-                            colon_token,
-                            ..
-                        }) => {
-                            if let Some(ident) = path.get_ident() {
-                                let ident_ = ident.to_string() + "_";
-                                let replacement_ident = Ident::new(&ident_, ident.span());
-                                let pred = WherePredicate::Type(PredicateType {
-                                    bounded_ty: Type::Path(TypePath {
-                                        qself: None,
-                                        path: Path::from(replacement_ident),
-                                    }),
-                                    bounds: bounds.clone(),
-                                    lifetimes: lifetimes.clone(),
-                                    colon_token: colon_token.clone(),
-                                });
-                                Some(quote! { #pred })
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    })
+                where_clause.predicates.iter().map(|pred: &WherePredicate| {
+                    replace_type_params_in(quote! { #pred }, infer, &ident_add_underscore_tree)
+                })
             });
         stream.extend(quote! { where });
         stream.append_terminated(clauses, quote! { , });
@@ -264,26 +241,20 @@ impl StructInput {
         }
         if generics.params.iter().all(|x| match x {
             GenericParam::Type(param) => filter_out.contains(&param.ident),
-            GenericParam::Const(_) => false,
-            _ => true,
+            _ => false,
         }) {
             return tokens;
         }
 
-        let mut trailing_or_empty = true;
         for param in generics.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
-                param.to_tokens(&mut tokens);
-                trailing_or_empty = param.punct().is_some();
+            if let GenericParam::Lifetime(l) = *param.value() {
+                l.to_tokens(&mut tokens);
+                Comma::default().to_tokens(&mut tokens);
             }
         }
         for param in generics.params.pairs() {
             if let GenericParam::Lifetime(_) = **param.value() {
                 continue;
-            }
-            if !trailing_or_empty {
-                <Token![,]>::default().to_tokens(&mut tokens);
-                trailing_or_empty = true;
             }
             match *param.value() {
                 GenericParam::Lifetime(_) => unreachable!(),
@@ -317,10 +288,7 @@ impl StructInput {
                     param.ty.to_tokens(&mut tokens);
                 }
             }
-            param.punct().to_tokens(&mut tokens);
-        }
-        if !tokens.is_empty() {
-            <Token![,]>::default().to_tokens(&mut tokens);
+            Comma::default().to_tokens(&mut tokens);
         }
         tokens
     }

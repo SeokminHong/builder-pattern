@@ -140,11 +140,8 @@ impl<'a> BuilderFunctions<'a> {
             .iter_mut()
             .for_each(|ty_tokens: &mut TokenStream| {
                 let tokens = std::mem::take(ty_tokens);
-                *ty_tokens = replace_type_params_in(
-                    tokens,
-                    &f.attrs.infer,
-                    &ident_add_underscore_tree,
-                );
+                *ty_tokens =
+                    replace_type_params_in(tokens, &f.attrs.infer, &ident_add_underscore_tree);
             });
         let (arg_type_gen, arg_type) = if f.attrs.use_into {
             (
