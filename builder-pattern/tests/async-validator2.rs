@@ -9,6 +9,7 @@ struct Test {
     #[setter(async, value)]
     pub b: i32,
 }
+
 fn is_positive(v: i32) -> Result<i32, &'static str> {
     if v > 0 {
         Ok(v)
@@ -16,8 +17,13 @@ fn is_positive(v: i32) -> Result<i32, &'static str> {
         Err("Value is negative or zero.")
     }
 }
-#[tokio::main]
-async fn main() {
+
+#[test]
+fn async_validator() {
+    tokio_test::block_on(async_validator_impl());
+}
+
+async fn async_validator_impl() {
     // If only value setters are used for validating fields, results should not be `Result`.
     let t1 = Test::new().a(3).unwrap().b(3).unwrap().build();
     println!("{:?}", t1);

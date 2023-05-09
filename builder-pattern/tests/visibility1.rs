@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod test {
     use builder_pattern::Builder;
 
@@ -13,7 +15,8 @@ mod test {
 
 use test::*;
 
-pub fn main() {
+#[test]
+pub fn visibility() {
     let t1 = PublicTest::new().a(333).b(Some(123)).build();
     println!("{:?}", t1);
 }

@@ -15,7 +15,8 @@ fn to_positive(val: i32) -> Result<i32, &'static str> {
     }
 }
 
-fn main() {
+#[test]
+fn validator() {
     let a = Test::new().positive(5).unwrap().build();
     let b = Test::new().positive(-5).unwrap().build();
     println!("a: {:?}, b: {:?}", a, b);

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use builder_pattern::Builder;
 use uuid::Uuid;
 
@@ -18,7 +20,8 @@ impl PartialEq for Test {
     }
 }
 
-fn main() {
+#[test]
+fn default() {
     let t1 = Test::new().build();
     let t2 = Test::new().name(String::from("Jane")).build();
     let t3 = Test::new().age(31).name(String::from("Jane")).build();

@@ -1,7 +1,7 @@
 use builder_pattern::Builder;
 use std::borrow::Cow;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum MyEnum {
     A,
     B(i32),
@@ -23,7 +23,7 @@ fn b_validator<'a, T: Clone>(v: Cow<'a, T>) -> Result<Cow<'a, T>, &'static str> 
     Ok(v)
 }
 
-#[derive(Builder, Debug, PartialEq)]
+#[derive(Builder, Debug, PartialEq, Eq)]
 pub struct Test2 {
     pub a: i32,
     #[default(None)]
@@ -32,7 +32,8 @@ pub struct Test2 {
     c: MyEnum,
 }
 
-fn main() {
+#[test]
+fn complex_types() {
     let a = Test1::<i32, String>::new()
         .a(5)
         .b(Cow::Owned(String::from("Hello")))

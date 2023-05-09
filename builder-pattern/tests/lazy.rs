@@ -25,8 +25,12 @@ fn test_city() -> &'static str {
     "Tokyo"
 }
 
-#[tokio::main]
-async fn main() {
+#[test]
+fn lazy() {
+    tokio_test::block_on(lazy_impl());
+}
+
+async fn lazy_impl() {
     // `name` is evaluated here
     let a_builder = Person::new().name(String::from("Jack")).age(30);
     let a = a_builder.build(); // `address` is evaluated here

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use builder_pattern::Builder;
 
 /// A structure describing a person.
@@ -17,7 +18,7 @@ use builder_pattern::Builder;
 ///
 /// println!("{:?}", person);
 /// ```
-#[derive(Builder, Debug)]
+#[derive(Builder, Debug, PartialEq)]
 struct Person {
     /**
      * Name of the person.
@@ -33,11 +34,20 @@ struct Person {
     pub city: String,
 }
 
+#[test]
 fn main() {
     let person = Person::new()
         .name(String::from("John"))
         .age(21)
         .city("Seoul")
         .build();
-    println!("{:?}", person);
+
+    assert_eq!(
+        person,
+        Person {
+            name: String::from("John"),
+            age: 21,
+            city: String::from("Seoul"),
+        }
+    )
 }

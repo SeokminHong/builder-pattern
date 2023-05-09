@@ -8,7 +8,8 @@ struct Test {
     c: String,
 }
 
-fn main() {
+#[test]
+fn into() {
     let a = Test::new()
         .a(3)
         // Implicit conversion (&str -> String)

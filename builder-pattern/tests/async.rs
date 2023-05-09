@@ -13,8 +13,12 @@ async fn value() -> i32 {
     10
 }
 
-#[tokio::main]
-async fn main() {
+#[test]
+fn async_build() {
+    tokio_test::block_on(async_build_impl());
+}
+
+async fn async_build_impl() {
     let t1 = Test::new().a(3).build();
     println!("{:?}", t1);
     assert_eq!(t1, Test { a: 3, b: 5 });

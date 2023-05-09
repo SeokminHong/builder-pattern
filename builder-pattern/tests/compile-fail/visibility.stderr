@@ -1,0 +1,8 @@
+error[E0624]: associated function `c` is private
+  --> tests/compile-fail/visibility.rs:19:10
+   |
+5  |     #[derive(Builder, Debug)]
+   |              ------- private associated function defined here
+...
+19 |         .c(1.234) // Cannot access `c` because it is private.
+   |          ^ private associated function

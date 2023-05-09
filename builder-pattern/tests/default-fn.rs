@@ -6,7 +6,8 @@ pub struct Whatever {
     pub bar: fn(i8) -> i8,
 }
 
-fn main() {
+#[test]
+fn default_fn() {
     let a = Whatever::new().build();
     assert_eq!((a.bar)(-1), 1);
 }
