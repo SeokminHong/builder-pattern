@@ -2,6 +2,7 @@ use bitflags::bitflags;
 use syn::{Attribute, Expr, Meta, NestedMeta};
 
 bitflags! {
+    #[derive(PartialEq, Eq, Clone, Copy)]
     pub struct Setters: u32 {
         const VALUE = 0b00000001;
         const LAZY = 0b00000010;
@@ -9,7 +10,7 @@ bitflags! {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum FieldVisibility {
     Public,
     Hidden,
