@@ -5,6 +5,7 @@ mod test {
 
     // Public structure
     #[derive(Builder, Debug)]
+    #[allow(unused)]
     pub struct PublicTest {
         pub a: i32,
         pub b: Option<i32>,

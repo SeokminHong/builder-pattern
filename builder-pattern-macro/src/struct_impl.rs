@@ -1,7 +1,10 @@
-use crate::{attributes::Setters, struct_input::StructInput};
+use crate::{
+    attributes::Setters, builder::builder_functions::replace_type_params_in,
+    struct_input::StructInput,
+};
 
 use core::str::FromStr;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
@@ -15,13 +18,23 @@ impl<'a> ToTokens for StructImpl<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.input.ident;
         let vis = &self.input.vis;
-        let where_clause = &self.input.generics.where_clause;
         let builder_name = self.input.builder_name();
 
         let lifetimes = self.input.lifetimes();
-        let impl_tokens = self.input.tokenize_impl();
         let empty_generics = self.empty_generics();
-        let ty_tokens = self.input.tokenize_types();
+        let defaulted_generics = self.input.defaulted_generics();
+
+        let with_prmdef = |ident: &Ident| self.input.with_param_default(&defaulted_generics, ident);
+        let replace_defaults =
+            |stream: TokenStream| replace_type_params_in(stream, &defaulted_generics, &with_prmdef);
+
+        let impl_tokens = self.input.tokenize_impl(&defaulted_generics);
+
+        let where_clause = &self.input.generics.where_clause;
+        let where_tokens =
+            replace_type_params_in(quote! { #where_clause }, &defaulted_generics, &with_prmdef);
+
+        let ty_tokens = replace_defaults(self.input.tokenize_types(&[], false));
 
         let fn_lifetime = self.input.fn_lifetime();
 
@@ -29,20 +42,20 @@ impl<'a> ToTokens for StructImpl<'a> {
         let docs = self.documents();
 
         tokens.extend(quote! {
-            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_clause {
+            impl <#impl_tokens> #ident <#(#lifetimes,)* #ty_tokens> #where_tokens {
                 #(#docs)*
                 #[allow(clippy::new_ret_no_self)]
                 #vis fn new<#fn_lifetime>() -> #builder_name<
                     #fn_lifetime,
                     #(#lifetimes,)*
                     #ty_tokens
-                    #(#empty_generics),*,
+                    #(#empty_generics,)*
                     (),
                     ()
                 > {
                     #[allow(clippy::redundant_closure_call)]
                     #builder_name {
-                        _phantom: ::core::marker::PhantomData,
+                        __builder_phantom: ::core::marker::PhantomData,
                         #(#builder_init_args),*
                     }
                 }
@@ -78,20 +91,31 @@ impl<'a> StructImpl<'a> {
             })
             .chain(self.input.optional_fields.iter().map(|f| {
                 if let (ident, Some((expr, setters))) = (&f.ident, &f.attrs.default.as_ref()) {
-                    match *setters {
-                        Setters::VALUE => quote_spanned! { expr.span() =>
-                            #ident: Some(::builder_pattern::setter::Setter::Value(#expr))
-                        },
-                        Setters::LAZY => {
-                            quote_spanned! { expr.span() =>
-                                #ident: Some(
-                                    ::builder_pattern::setter::Setter::Lazy(
-                                        Box::new(#expr)
-                                    )
-                                )
-                            }
+                    if f.attrs.late_bound_default {
+                        quote_spanned! { expr.span() =>
+                            #ident: Some(::builder_pattern::setter::Setter::LateBoundDefault(
+                                ::builder_pattern::refl::refl()
+                            ))
                         }
-                        _ => unimplemented!(),
+                    } else {
+                        match *setters {
+                            Setters::VALUE => quote_spanned! { expr.span() =>
+                                #ident: Some(::builder_pattern::setter::Setter::Default(
+                                    #expr,
+                                    ::builder_pattern::refl::refl()
+                                ))
+                            },
+                            Setters::LAZY => {
+                                quote_spanned! { expr.span() =>
+                                    #ident: Some(
+                                        ::builder_pattern::setter::Setter::Lazy(
+                                            Box::new(#expr)
+                                        )
+                                    )
+                                }
+                            }
+                            _ => unimplemented!(),
+                        }
                     }
                 } else {
                     unimplemented!()

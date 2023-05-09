@@ -1,11 +1,11 @@
 use crate::{
-    attributes::{FieldVisibility, Setters},
+    attributes::{ident_add_underscore_tree, FieldVisibility, Setters},
     field::Field,
     struct_input::StructInput,
 };
 
 use core::str::FromStr;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Group, Ident, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{parse_quote, spanned::Spanned, Attribute};
 
@@ -22,7 +22,21 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
             .chain(self.input.optional_fields.iter())
             .map(|f| {
                 let ident = &f.ident;
-                quote! { #ident: self.#ident }
+                if f.attrs.late_bound_default {
+                    quote! {
+                        #ident: match self.#ident {
+                            Some(::builder_pattern::setter::Setter::LateBoundDefault(d)) => {
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(d))
+                            }
+                            Some(::builder_pattern::setter::Setter::Value(val)) => {
+                                Some(::builder_pattern::setter::Setter::Value(val))
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                } else {
+                    quote! { #ident: self.#ident }
+                }
             })
             .collect::<Vec<_>>();
 
@@ -50,6 +64,25 @@ impl<'a> ToTokens for BuilderFunctions<'a> {
                 index += 1;
             });
     }
+}
+
+pub fn replace_type_params_in(
+    stream: TokenStream,
+    replacements: &[Ident],
+    with: &impl Fn(&Ident) -> TokenTree,
+) -> TokenStream {
+    stream
+        .into_iter()
+        .map(|tt| match tt {
+            TokenTree::Group(g) => {
+                let delim = g.delimiter();
+                let stream = replace_type_params_in(g.stream(), replacements, with);
+                TokenTree::Group(Group::new(delim, stream))
+            }
+            TokenTree::Ident(ident) if replacements.contains(&ident) => with(&ident),
+            x => x,
+        })
+        .collect()
 }
 
 impl<'a> BuilderFunctions<'a> {
@@ -101,21 +134,38 @@ impl<'a> BuilderFunctions<'a> {
         index: usize,
         builder_fields: &mut Vec<TokenStream>,
     ) {
-        let (ident, ty, vis) = (&f.ident, &f.ty, &f.vis);
+        let (ident, orig_ty, vis) = (&f.ident, &f.ty, &f.vis);
         let builder_name = self.input.builder_name();
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
-        let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
-        let (arg_type_gen, arg_type) = if f.attrs.use_into {
-            (
-                Some(quote! {<IntoType: Into<#ty>>}),
-                TokenStream::from_str("IntoType").unwrap(),
-            )
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
+        let ty_tokens_ = self.input.tokenize_types(&f.attrs.infer, false);
+        let fn_where_clause = self.input.setter_where_clause(&f.attrs.infer);
+        let (other_generics, before_generics, mut after_generics) = self.get_generics(f, index);
+        let replaced_ty = replace_type_params_in(
+            quote! { #orig_ty },
+            &f.attrs.infer,
+            &ident_add_underscore_tree,
+        );
+        after_generics
+            .iter_mut()
+            .for_each(|ty_tokens: &mut TokenStream| {
+                let tokens = std::mem::take(ty_tokens);
+                *ty_tokens =
+                    replace_type_params_in(tokens, &f.attrs.infer, &ident_add_underscore_tree);
+            });
+        let into_generics = if f.attrs.use_into {
+            vec![quote! {IntoType: Into<#replaced_ty>}]
         } else {
-            (None, quote! {#ty})
+            vec![]
+        };
+        let fn_generics = f.tokenize_replacement_params(&into_generics);
+        let arg_type = if f.attrs.use_into {
+            quote! { IntoType }
+        } else {
+            quote! { #replaced_ty }
         };
         let documents = Self::documents(f, Setters::VALUE);
 
@@ -131,7 +181,7 @@ impl<'a> BuilderFunctions<'a> {
                         Result<#builder_name <
                             #fn_lifetime,
                             #(#lifetimes,)*
-                            #ty_tokens
+                            #ty_tokens_
                             #(#after_generics,)*
                             AsyncFieldMarker,
                             ValidatorOption
@@ -142,7 +192,7 @@ impl<'a> BuilderFunctions<'a> {
                         match #v (value.into()) {
                             Ok(value) => Ok(
                                 #builder_name {
-                                    _phantom: ::core::marker::PhantomData,
+                                    __builder_phantom: ::core::marker::PhantomData,
                                     #(#builder_fields),*
                                 }),
                             Err(e) => Err(format!("Validation failed: {:?}", e))
@@ -161,7 +211,7 @@ impl<'a> BuilderFunctions<'a> {
                         #builder_name <
                             #fn_lifetime,
                             #(#lifetimes,)*
-                            #ty_tokens
+                            #ty_tokens_
                             #(#after_generics,)*
                             AsyncFieldMarker,
                             ValidatorOption
@@ -169,7 +219,7 @@ impl<'a> BuilderFunctions<'a> {
                     },
                     quote! {
                         #builder_name {
-                            _phantom: ::core::marker::PhantomData,
+                            __builder_phantom: ::core::marker::PhantomData,
                             #(#builder_fields),*
                         }
                     },
@@ -195,7 +245,9 @@ impl<'a> BuilderFunctions<'a> {
                 #where_clause
             {
                 #(#documents)*
-                #vis fn #ident #arg_type_gen(self, value: #arg_type) -> #ret_type {
+                #vis fn #ident #fn_generics(self, value: #arg_type) -> #ret_type
+                #fn_where_clause
+                {
                     #ret_expr
                 }
             }
@@ -215,8 +267,8 @@ impl<'a> BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<IntoType: Into<#ty>, ValType: #fn_lifetime + ::core::ops::Fn() -> IntoType>}
@@ -244,7 +296,7 @@ impl<'a> BuilderFunctions<'a> {
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::core::marker::PhantomData,
+                __builder_phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };
@@ -305,8 +357,8 @@ impl<'a> BuilderFunctions<'a> {
         let where_clause = &self.input.generics.where_clause;
         let lifetimes = self.input.lifetimes();
         let fn_lifetime = self.input.fn_lifetime();
-        let impl_tokens = self.input.tokenize_impl();
-        let ty_tokens = self.input.tokenize_types();
+        let impl_tokens = self.input.tokenize_impl(&[]);
+        let ty_tokens = self.input.tokenize_types(&[], false);
         let (other_generics, before_generics, after_generics) = self.get_generics(f, index);
         let arg_type_gen = if f.attrs.use_into {
             quote! {<
@@ -343,7 +395,7 @@ impl<'a> BuilderFunctions<'a> {
         };
         let ret_expr_val = quote! {
             #builder_name {
-                _phantom: ::core::marker::PhantomData,
+                __builder_phantom: ::core::marker::PhantomData,
                 #(#builder_fields),*
             }
         };

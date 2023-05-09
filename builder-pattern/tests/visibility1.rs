@@ -4,6 +4,7 @@ mod test {
     use builder_pattern::Builder;
 
     // Public structure
+    #[allow(unused)]
     #[derive(Builder, Debug)]
     pub struct PublicTest {
         pub a: i32,

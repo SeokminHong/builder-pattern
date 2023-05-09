@@ -1,4 +1,7 @@
-use crate::attributes::{FieldAttributes, FieldVisibility};
+use crate::attributes::{
+    ident_add_underscore, ident_add_underscore_tree, FieldAttributes, FieldVisibility,
+};
+use crate::builder::builder_functions::replace_type_params_in;
 use crate::builder::{
     builder_decl::BuilderDecl, builder_functions::BuilderFunctions, builder_impl::BuilderImpl,
 };
@@ -6,13 +9,15 @@ use crate::field::Field;
 use crate::struct_impl::StructImpl;
 
 use core::str::FromStr;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Group, Ident, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
+use syn::token::Comma;
 use syn::{
     parse::{Parse, ParseStream, Result},
     AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
     VisPublic, Visibility,
 };
+use syn::{WhereClause, WherePredicate};
 
 pub struct StructInput {
     pub vis: Visibility,
@@ -138,82 +143,122 @@ impl StructInput {
         &'a self,
         fn_lifetime: &'a Lifetime,
     ) -> impl 'a + Iterator<Item = TokenStream> {
+        // TODO: just store defaulted_generics in a field
+        let defaulted_generics = self.defaulted_generics();
+        let defaulted_generics2 = defaulted_generics.clone();
+        let with_prmdef = move |ident: &Ident| self.with_param_default(&defaulted_generics, ident);
+        let replace_defaults = move |stream: TokenStream| {
+            replace_type_params_in(stream, &defaulted_generics2, &with_prmdef)
+        };
         self.required_fields
             .iter()
             .chain(self.optional_fields.iter())
             .map(move |f| {
                 let (ident, ty) = (&f.ident, &f.ty);
+                let subst = replace_defaults(quote! { #ty });
                 quote! {
-                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty>>
+                    #ident: Option<::builder_pattern::setter::Setter<#fn_lifetime, #ty, #subst>>
                 }
             })
     }
 
     /// Tokenize type parameters.
     /// It skips lifetimes and has no outer brackets.
-    pub fn tokenize_types(&self) -> TokenStream {
+    pub fn tokenize_types(&self, infer: &[Ident], omit_replaced: bool) -> TokenStream {
         let generics = &self.generics;
         let mut tokens = TokenStream::new();
 
         if generics.params.is_empty() {
             return tokens;
         }
-
-        let mut trailing_or_empty = true;
-        for param in generics.params.pairs() {
-            if let GenericParam::Lifetime(_) = *param.value() {
-                trailing_or_empty = param.punct().is_some();
-            }
+        if omit_replaced
+            && generics.params.iter().all(|x| match x {
+                GenericParam::Type(param) => infer.contains(&param.ident),
+                GenericParam::Const(_) => false,
+                _ => true,
+            })
+        {
+            return tokens;
         }
+
         for param in generics.params.pairs() {
             if let GenericParam::Lifetime(_) = **param.value() {
                 continue;
-            }
-            if !trailing_or_empty {
-                <Token![,]>::default().to_tokens(&mut tokens);
-                trailing_or_empty = true;
             }
             match *param.value() {
                 GenericParam::Lifetime(_) => unreachable!(),
                 GenericParam::Type(param) => {
                     // Leave off the type parameter defaults
-                    param.ident.to_tokens(&mut tokens);
+                    if infer.contains(&param.ident) {
+                        if omit_replaced {
+                            continue;
+                        }
+                        ident_add_underscore(&param.ident).to_tokens(&mut tokens);
+                    } else {
+                        param.ident.to_tokens(&mut tokens);
+                    }
                 }
                 GenericParam::Const(param) => {
                     // Leave off the const parameter defaults
                     param.ident.to_tokens(&mut tokens);
                 }
             }
-            param.punct().to_tokens(&mut tokens);
+            Comma::default().to_tokens(&mut tokens);
         }
-        <Token![,]>::default().to_tokens(&mut tokens);
         tokens
+    }
+
+    pub fn setter_where_clause(&self, infer: &[Ident]) -> TokenStream {
+        let mut stream = TokenStream::new();
+        if infer.is_empty() {
+            return stream;
+        }
+        let clauses = self
+            .generics
+            .where_clause
+            .iter()
+            .flat_map(|where_clause: &WhereClause| {
+                where_clause.predicates.iter().map(|pred: &WherePredicate| {
+                    replace_type_params_in(quote! { #pred }, infer, &ident_add_underscore_tree)
+                })
+            });
+        stream.extend(quote! { where });
+        stream.append_terminated(clauses, quote! { , });
+        stream
     }
 
     /// Tokenize parameters for `impl` blocks.
     /// It doesn't contain outer brackets, but lifetimes and trait bounds.
-    pub fn tokenize_impl(&self) -> TokenStream {
+    pub fn tokenize_impl(&self, filter_out: &[Ident]) -> TokenStream {
         let mut tokens = TokenStream::new();
         let generics = &self.generics;
 
-        let mut trailing_or_empty = true;
+        if generics.params.is_empty() {
+            return tokens;
+        }
+        if generics.params.iter().all(|x| match x {
+            GenericParam::Type(param) => filter_out.contains(&param.ident),
+            _ => false,
+        }) {
+            return tokens;
+        }
+
         for param in generics.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
-                param.to_tokens(&mut tokens);
-                trailing_or_empty = param.punct().is_some();
+            if let GenericParam::Lifetime(l) = *param.value() {
+                l.to_tokens(&mut tokens);
+                Comma::default().to_tokens(&mut tokens);
             }
         }
         for param in generics.params.pairs() {
             if let GenericParam::Lifetime(_) = **param.value() {
                 continue;
             }
-            if !trailing_or_empty {
-                <Token![,]>::default().to_tokens(&mut tokens);
-                trailing_or_empty = true;
-            }
             match *param.value() {
                 GenericParam::Lifetime(_) => unreachable!(),
                 GenericParam::Type(param) => {
+                    if filter_out.contains(&param.ident) {
+                        continue;
+                    }
                     // Leave off the type parameter defaults
                     tokens.append_all(param.attrs.iter().filter(|attr| match attr.style {
                         AttrStyle::Outer => true,
@@ -240,11 +285,37 @@ impl StructInput {
                     param.ty.to_tokens(&mut tokens);
                 }
             }
-            param.punct().to_tokens(&mut tokens);
-        }
-        if !tokens.is_empty() {
-            <Token![,]>::default().to_tokens(&mut tokens);
+            Comma::default().to_tokens(&mut tokens);
         }
         tokens
+    }
+
+    pub fn defaulted_generics(&self) -> Vec<Ident> {
+        self.generics
+            .type_params()
+            .filter(|x| x.default.is_some())
+            .map(|x| x.ident.clone())
+            .collect()
+    }
+
+    pub fn with_param_default(&self, defaulted_generics: &[Ident], ident: &Ident) -> TokenTree {
+        let with_prmdef = |ident: &Ident| self.with_param_default(defaulted_generics, ident);
+        self.generics
+            .type_params()
+            .find_map(|x| {
+                if x.ident == *ident {
+                    let default = x.default.as_ref().unwrap();
+                    let stream = quote! { #default };
+                    let replaced_within =
+                        replace_type_params_in(stream, defaulted_generics, &with_prmdef);
+                    Some(TokenTree::Group(Group::new(
+                        proc_macro2::Delimiter::None,
+                        replaced_within,
+                    )))
+                } else {
+                    None
+                }
+            })
+            .expect("hmmmm")
     }
 }

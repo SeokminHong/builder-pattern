@@ -1,8 +1,9 @@
 use crate::{attributes::Setters, struct_input::StructInput};
 
 use core::str::FromStr;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
+use syn::spanned::Spanned;
 
 pub struct BuilderImpl<'a> {
     pub input: &'a StructInput,
@@ -74,10 +75,11 @@ impl<'a> BuilderImpl<'a> {
 
         let fn_lifetime = self.input.fn_lifetime();
 
-        let impl_tokens = self.input.tokenize_impl();
+        let impl_tokens = self.input.tokenize_impl(&[]);
         let optional_generics = self.optional_generics().collect::<Vec<_>>();
         let satisfied_generics = self.satified_generics().collect::<Vec<_>>();
-        let ty_tokens = self.input.tokenize_types();
+
+        let ty_tokens = self.input.tokenize_types(&[], false);
 
         let mut struct_init_args = vec![];
         let mut validated_init_fields = vec![];
@@ -89,23 +91,62 @@ impl<'a> BuilderImpl<'a> {
             .chain(self.input.optional_fields.iter())
             .for_each(|f| {
                 let ident = &f.ident;
+                let ty = &f.ty;
+                // let substituted_ty = replace_defaults(quote! { #ty });
                 struct_init_args.push(ident.to_token_stream());
+                let mk_default_case =
+                    |wrap: fn(TokenStream) -> TokenStream| match &f.attrs.default.as_ref() {
+                        Some((expr, setters)) if f.attrs.late_bound_default => {
+                            let expr = match *setters {
+                                Setters::VALUE => quote_spanned! { expr.span() => #expr },
+                                Setters::LAZY => quote_spanned! { expr.span() => (#expr)() },
+                                _ => unimplemented!(),
+                            };
+                            let wrapped_expr = wrap(expr);
+                            quote! {
+                                None => unreachable!("field should have had default"),
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(id)) => {
+                                    { let val: #ty = id.cast(#wrapped_expr); val }
+                                }
+                                Some(::builder_pattern::setter::Setter::Default(..)) =>
+                                    unreachable!("late-bound optional field was set in new()"),
+                            }
+                        }
+                        Some((_expr, _setters)) => {
+                            let id = Ident::new("id", Span::call_site());
+                            let default = Ident::new("default", Span::call_site());
+                            let expr = wrap(quote!{ #id.cast(#default) });
+                            quote! {
+                                None => unreachable!("early-bound optional field had no default set in new()"),
+                                Some(::builder_pattern::setter::Setter::LateBoundDefault(..)) => unreachable!("early-bound optional field had no default set in new()"),
+                                Some(::builder_pattern::setter::Setter::Default(#default, #id)) => #expr,
+                            }
+                        }
+                        _ => quote! {
+                            Some(::builder_pattern::setter::Setter::LateBoundDefault(..)) |
+                            Some(::builder_pattern::setter::Setter::Default(..)) |
+                            None => unreachable!("required field not set"),
+                        },
+                    };
+
                 if f.attrs.validator.is_some()
                     && !(f.attrs.setters & (Setters::LAZY | Setters::ASYNC)).is_empty()
                 {
                     let async_case = if is_async {
                         quote! {
-                            ::builder_pattern::setter::Setter::Async(f) => Ok(f().await),
-                            ::builder_pattern::setter::Setter::AsyncValidated(f) => f().await,
+                            Some(::builder_pattern::setter::Setter::Async(f)) => Ok(f().await),
+                            Some(::builder_pattern::setter::Setter::AsyncValidated(f)) => f().await,
                         }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
+                    let default_case = mk_default_case(|expr| quote! { Ok(#expr) });
                     validated_init_fields.push(quote! {
-                        let #ident = match match self.#ident.unwrap() {
-                            ::builder_pattern::setter::Setter::Value(v) => Ok(v),
-                            ::builder_pattern::setter::Setter::Lazy(f) => Ok(f()),
-                            ::builder_pattern::setter::Setter::LazyValidated(f) => f(),
+                        let #ident = match match self.#ident {
+                            #default_case
+                            Some(::builder_pattern::setter::Setter::Value(v)) => Ok(v),
+                            Some(::builder_pattern::setter::Setter::Lazy(f)) => Ok(f()),
+                            Some(::builder_pattern::setter::Setter::LazyValidated(f)) => f(),
                             #async_case
                         } {
                             Ok(v) => v,
@@ -115,32 +156,36 @@ impl<'a> BuilderImpl<'a> {
                 } else {
                     let async_case = if is_async {
                         quote! {
-                            ::builder_pattern::setter::Setter::Async(f) => f().await,
+                            Some(::builder_pattern::setter::Setter::Async(f)) => f().await,
                             _ => unimplemented!(),
                         }
                     } else {
                         quote! {_ => unimplemented!()}
                     };
+                    let default_case = mk_default_case(|expr| quote! { #expr });
                     init_fields.push(quote! {
-                        let #ident = match self.#ident.unwrap() {
-                            ::builder_pattern::setter::Setter::Value(v) => v,
-                            ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                        let #ident = match self.#ident {
+                            #default_case
+                            Some(::builder_pattern::setter::Setter::Value(v)) => v,
+                            Some(::builder_pattern::setter::Setter::Lazy(f)) => f(),
                             #async_case
                         };
                     });
                 }
                 let async_case = if is_async {
                     quote! {
-                        ::builder_pattern::setter::Setter::Async(f) => f().await,
+                        Some(::builder_pattern::setter::Setter::Async(f)) => f().await,
                         _ => unimplemented!(),
                     }
                 } else {
                     quote! {_ => unimplemented!()}
                 };
+                let default_case = mk_default_case(|expr| quote! { #expr });
                 no_lazy_validation_fields.push(quote! {
-                    let #ident = match self.#ident.unwrap() {
-                        ::builder_pattern::setter::Setter::Value(v) => v,
-                        ::builder_pattern::setter::Setter::Lazy(f) => f(),
+                    let #ident = match self.#ident {
+                        Some(::builder_pattern::setter::Setter::Value(v)) => v,
+                        Some(::builder_pattern::setter::Setter::Lazy(f)) => f(),
+                        #default_case
                         #async_case
                     };
                 });
@@ -155,10 +200,11 @@ impl<'a> BuilderImpl<'a> {
         };
         tokens.extend(quote! {
         impl <#fn_lifetime, #impl_tokens #(#optional_generics,)*> #builder_name
-            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics),*, #async_generic, ()>
+            <#fn_lifetime, #(#lifetimes,)* #ty_tokens #(#satisfied_generics,)* #async_generic, ()>
             #where_clause
             {
                 #[allow(dead_code)]
+                #[allow(clippy::redundant_closure_call)]
                 #vis #kw_async fn build(self) -> #ident <#(#lifetimes,)* #ty_tokens> {
                     #(#no_lazy_validation_fields)*
                     #ident {

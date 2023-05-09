@@ -5,7 +5,11 @@ use core::pin::Pin;
 
 pub type LocalBoxFuture<'a, T> = Pin<alloc::boxed::Box<dyn Future<Output = T> + 'a>>;
 
-pub enum Setter<'a, T> {
+use super::refl::Id;
+
+pub enum Setter<'a, T, D = T> {
+    Default(D, Id<D, T>),
+    LateBoundDefault(Id<D, T>),
     Value(T),
     Lazy(Box<dyn 'a + FnOnce() -> T>),
     LazyValidated(Box<dyn 'a + FnOnce() -> Result<T, &'static str>>),
