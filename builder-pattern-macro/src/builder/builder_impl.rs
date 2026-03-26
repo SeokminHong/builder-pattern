@@ -47,7 +47,6 @@ impl<'a> BuilderImpl<'a> {
     fn optional_generics(&self) -> impl Iterator<Item = TokenStream> {
         let offset = self.input.required_fields.len() + 1;
         (0..self.input.optional_fields.len())
-            .into_iter()
             .map(move |i| {
                 TokenStream::from_str(&format!("TyBuilderPattern{}", i + offset)).unwrap()
             })
