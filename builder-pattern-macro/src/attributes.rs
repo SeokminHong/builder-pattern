@@ -118,16 +118,21 @@ fn parse_setters(attr: &Attribute, attributes: &mut FieldAttributes) {
         let mut values = Punctuated::new();
         while !input.is_empty() {
             values.push_value(input.call(syn::Ident::parse_any)?);
-            if input.is_empty() {
-                break;
+            if input.peek(Comma) {
+                values.push_punct(input.parse()?);
             }
-            values.push_punct(input.parse()?);
         }
         Ok::<Punctuated<syn::Ident, Comma>, syn::Error>(values)
     };
     let metas = parser
-        .parse2(attr.meta.require_list().unwrap().tokens.clone())
-        .unwrap();
+        .parse2(
+            attr.meta
+                .require_list()
+                .expect("`setter` attribute must be a list, e.g. #[setter(value, lazy)]")
+                .tokens
+                .clone(),
+        )
+        .expect("`setter` attribute must contain valid identifiers separated by commas");
     metas.iter().for_each(|setter| {
         if setter == "value" {
             setters.insert(Setters::VALUE);
