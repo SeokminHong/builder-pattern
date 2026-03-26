@@ -17,7 +17,7 @@ impl Field {
         self.attrs
             .documents
             .iter()
-            .filter(|a| a.path.is_ident("doc"))
+            .filter(|a| a.path().is_ident("doc"))
             .map(|a| a.to_owned())
             .collect()
     }
@@ -40,7 +40,7 @@ impl Ord for Field {
 
 impl PartialOrd for Field {
     fn partial_cmp(&self, other: &Field) -> Option<Ordering> {
-        Some(self.ident.cmp(&other.ident))
+        Some(self.cmp(other))
     }
 }
 

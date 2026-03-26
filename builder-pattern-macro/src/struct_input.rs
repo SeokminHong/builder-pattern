@@ -10,14 +10,16 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
 use syn::{
     parse::{Parse, ParseStream, Result},
-    AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Lifetime, Token,
-    VisPublic, Visibility,
+    parse_quote, AttrStyle, Attribute, Data, DeriveInput, Fields, GenericParam, Generics,
+    Lifetime, Token,
+    Visibility,
 };
 
 pub struct StructInput {
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
+    #[allow(dead_code)]
     pub attrs: Vec<Attribute>,
     pub required_fields: Vec<Field>,
     pub optional_fields: Vec<Field>,
@@ -57,8 +59,7 @@ impl Parse for StructInput {
             };
             fields.push(Field {
                 vis: if attrs.vis == FieldVisibility::Public {
-                    let v = <Token![pub]>::default();
-                    Visibility::Public(VisPublic { pub_token: v })
+                    parse_quote!(pub)
                 } else {
                     f.vis
                 },
@@ -129,7 +130,6 @@ impl StructInput {
     /// An iterator for generics like [U1, U2, ...].
     pub fn all_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.num_fields()))
-            .into_iter()
             .map(|i| TokenStream::from_str(&format!("TyBuilderPattern{}", i + 1)).unwrap())
     }
 

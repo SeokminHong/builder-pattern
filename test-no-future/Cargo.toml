@@ -9,5 +9,5 @@ license = "MIT"
 builder-pattern = { version = "0.4.2", path = "../builder-pattern", default-features = false }
 
 [dev-dependencies]
-uuid = { version = "0.8", features = ["v4"] }
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1", features = ["v4"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

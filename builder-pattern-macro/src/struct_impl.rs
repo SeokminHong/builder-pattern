@@ -59,7 +59,6 @@ impl<'a> StructImpl<'a> {
     /// An iterator to describe initial state of builder.
     fn empty_generics(&self) -> impl Iterator<Item = TokenStream> {
         (0..(self.input.required_fields.len() + self.input.optional_fields.len()))
-            .into_iter()
             .map(|_| TokenStream::from_str("()").unwrap())
     }
 

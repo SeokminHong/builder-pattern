@@ -1,7 +1,14 @@
 use bitflags::bitflags;
-use syn::{Attribute, Expr, Meta, NestedMeta};
+use syn::{
+    Attribute, Expr,
+    ext::IdentExt,
+    parse::{ParseStream, Parser},
+    punctuated::Punctuated,
+    token::Comma,
+};
 
 bitflags! {
+    #[derive(Clone, Copy, PartialEq, Eq)]
     pub struct Setters: u32 {
         const VALUE = 0b00000001;
         const LAZY = 0b00000010;
@@ -42,38 +49,38 @@ impl From<Vec<Attribute>> for FieldAttributes {
     fn from(attrs: Vec<Attribute>) -> FieldAttributes {
         let mut attributes = FieldAttributes::default();
         attrs.iter().for_each(|attr| {
-            if attr.path.is_ident("default") {
+            if attr.path().is_ident("default") {
                 if attributes.default.is_some() {
                     unimplemented!("Duplicated `default` attributes.")
                 }
                 parse_default(attr, &mut attributes)
-            } else if attr.path.is_ident("default_lazy") {
+            } else if attr.path().is_ident("default_lazy") {
                 if attributes.default.is_some() {
                     unimplemented!("Duplicated `default` attributes.")
                 }
                 parse_lazy_default(attr, &mut attributes)
-            } else if attr.path.is_ident("default_async") {
+            } else if attr.path().is_ident("default_async") {
                 if attributes.default.is_some() {
                     unimplemented!("Duplicated `default` attributes.")
                 }
                 unimplemented!("Asynchronous default is not implemented yet.")
-            } else if attr.path.is_ident("hidden") {
+            } else if attr.path().is_ident("hidden") {
                 if attributes.vis != FieldVisibility::Default {
                     unimplemented!("Duplicated `hidden` attributes.")
                 }
                 attributes.vis = FieldVisibility::Hidden;
-            } else if attr.path.is_ident("public") {
+            } else if attr.path().is_ident("public") {
                 if attributes.vis != FieldVisibility::Default {
                     unimplemented!("Duplicated `public` attributes.")
                 }
                 attributes.vis = FieldVisibility::Public;
-            } else if attr.path.is_ident("into") {
+            } else if attr.path().is_ident("into") {
                 attributes.use_into = true
-            } else if attr.path.is_ident("validator") {
+            } else if attr.path().is_ident("validator") {
                 parse_validator(attr, &mut attributes)
-            } else if attr.path.is_ident("doc") {
+            } else if attr.path().is_ident("doc") {
                 attributes.documents = get_documents(&attrs);
-            } else if attr.path.is_ident("setter") {
+            } else if attr.path().is_ident("setter") {
                 parse_setters(attr, &mut attributes)
             }
         });
@@ -106,26 +113,37 @@ fn parse_validator(attr: &Attribute, attributes: &mut FieldAttributes) {
 }
 
 fn parse_setters(attr: &Attribute, attributes: &mut FieldAttributes) {
-    let meta = attr.parse_meta().unwrap();
     let mut setters = Setters::empty();
-    if let Meta::List(l) = meta {
-        let it = l.nested.iter();
-        it.for_each(|m| {
-            if let NestedMeta::Meta(Meta::Path(p)) = m {
-                if p.is_ident("value") {
-                    setters.insert(Setters::VALUE);
-                } else if p.is_ident("lazy") {
-                    setters.insert(Setters::LAZY);
-                } else if p.is_ident("async") {
-                    setters.insert(Setters::ASYNC);
-                }
-            } else {
-                unimplemented!("Invalid setter.")
+    let parser = |input: ParseStream| {
+        let mut values = Punctuated::new();
+        while !input.is_empty() {
+            values.push_value(input.call(syn::Ident::parse_any)?);
+            if input.peek(Comma) {
+                values.push_punct(input.parse()?);
             }
-        });
-    } else {
-        unimplemented!("Invalid setter.")
-    }
+        }
+        Ok::<Punctuated<syn::Ident, Comma>, syn::Error>(values)
+    };
+    let metas = parser
+        .parse2(
+            attr.meta
+                .require_list()
+                .expect("`setter` attribute must be a list, e.g. #[setter(value, lazy)]")
+                .tokens
+                .clone(),
+        )
+        .expect("`setter` attribute must contain valid identifiers separated by commas");
+    metas.iter().for_each(|setter| {
+        if setter == "value" {
+            setters.insert(Setters::VALUE);
+        } else if setter == "lazy" {
+            setters.insert(Setters::LAZY);
+        } else if setter == "async" {
+            setters.insert(Setters::ASYNC);
+        } else {
+            unimplemented!("Invalid setter.")
+        }
+    });
     attributes.setters = setters;
 }
 
@@ -133,7 +151,7 @@ pub fn get_documents(attrs: &[Attribute]) -> Vec<Attribute> {
     let mut documents: Vec<Attribute> = vec![];
 
     for attr in attrs {
-        if attr.path.is_ident("doc") {
+        if attr.path().is_ident("doc") {
             documents.push(attr.to_owned());
         }
     }
