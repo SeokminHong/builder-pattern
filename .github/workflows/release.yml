@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New release version (e.g. 0.4.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Update crate versions
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+
+          sed -i "s/^version = \".*\"$/version = \"$VERSION\"/" builder-pattern/Cargo.toml
+          sed -i "s/^version = \".*\"$/version = \"$VERSION\"/" builder-pattern-macro/Cargo.toml
+          sed -i "s/^version = \".*\"$/version = \"$VERSION\"/" test-no-future/Cargo.toml
+          sed -i "s/builder-pattern-macro = { version = \".*\", path = \"\.\.\/builder-pattern-macro\" }/builder-pattern-macro = { version = \"$VERSION\", path = \"..\/builder-pattern-macro\" }/" builder-pattern/Cargo.toml
+          sed -i "s/builder-pattern = { version = \".*\", path = \"\.\.\/builder-pattern\", default-features = false }/builder-pattern = { version = \"$VERSION\", path = \"..\/builder-pattern\", default-features = false }/" test-no-future/Cargo.toml
+
+      - name: Run tests
+        run: cargo test --doc
+
+      - name: Commit and tag release
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add builder-pattern/Cargo.toml builder-pattern-macro/Cargo.toml test-no-future/Cargo.toml
+          git commit -m "chore: release v$VERSION"
+          git tag "v$VERSION"
+          git push
+          git push origin "v$VERSION"
+
+      - name: Publish crates
+        run: ./scripts/publish.sh
