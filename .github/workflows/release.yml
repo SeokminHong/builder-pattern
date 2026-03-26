@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New release version (e.g. 0.4.3)'
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate release tag
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists on origin"
+            exit 1
+          fi
+
+      - name: Update crate versions
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          export VERSION
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          version = os.environ["VERSION"]
+
+          def update_package_version(path: str):
+              p = Path(path)
+              lines = p.read_text().splitlines()
+              in_package = False
+              updated = False
+              for i, line in enumerate(lines):
+                  stripped = line.strip()
+                  if stripped.startswith("[") and stripped.endswith("]"):
+                      in_package = stripped == "[package]"
+                      continue
+                  if in_package and stripped.startswith("version = "):
+                      lines[i] = f'version = "{version}"'
+                      updated = True
+                      break
+              if not updated:
+                  raise RuntimeError(f"Could not update [package] version in {path}")
+              p.write_text("\n".join(lines) + "\n")
+
+          def update_dependency_version(path: str, dep_name: str):
+              p = Path(path)
+              content = p.read_text()
+              pattern = rf'({re.escape(dep_name)}\s*=\s*\{{[^}]*\bversion\s*=\s*")[^"]+(")'
+              new_content, count = re.subn(pattern, rf"\g<1>{version}\2", content, count=1)
+              if count != 1:
+                  raise RuntimeError(
+                      f"Expected 1 version field for dependency '{dep_name}' in {path}, found {count}"
+                  )
+              p.write_text(new_content)
+
+          update_package_version("builder-pattern/Cargo.toml")
+          update_package_version("builder-pattern-macro/Cargo.toml")
+          update_package_version("test-no-future/Cargo.toml")
+          update_dependency_version("builder-pattern/Cargo.toml", "builder-pattern-macro")
+          update_dependency_version("test-no-future/Cargo.toml", "builder-pattern")
+          PY
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Commit release changes
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add builder-pattern/Cargo.toml builder-pattern-macro/Cargo.toml test-no-future/Cargo.toml
+          if git diff --cached --quiet; then
+            echo "No release changes detected for version $VERSION"
+            exit 1
+          fi
+          git commit -m "chore: release v$VERSION"
+
+      - name: Publish crates
+        run: |
+          test -x ./scripts/publish.sh || {
+            echo "Expected executable publish script at ./scripts/publish.sh"
+            exit 1
+          }
+          ./scripts/publish.sh || {
+            echo "Publishing to crates.io failed. Check cargo publish output in this step for details."
+            exit 1
+          }
+
+      - name: Push commit and tag
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git tag "v$VERSION"
+          git push
+          git push origin "v$VERSION"
